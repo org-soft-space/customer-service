@@ -1,0 +1,72 @@
+package org.softspace.customer.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
+import org.softspace.customer.dto.customer.response.CustomerResponse;
+import org.softspace.customer.dto.customer.response.CustomerListResponse;
+import org.softspace.customer.entity.CustomerEntity;
+import org.softspace.customer.exception.CustomerNotFoundException;
+import org.softspace.customer.exception.ValidationException;
+import org.softspace.customer.repository.CustomerRepository;
+import org.softspace.customer.service.mapper.CustomerMapper;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class CustomerService {
+
+    private final CustomerRepository customerRepository;
+    private final CustomerMapper customerMapper;
+
+    @Transactional
+    public CustomerResponse createNewCustomer(CreateCustomerRequest createCustomerRequest) {
+
+        log.info("Create new customer: {}", createCustomerRequest.customerType());
+        Instant newTime = Instant.now();
+        UUID newCustomerGuid = UUID.randomUUID();
+
+        if ((createCustomerRequest.email() == null || createCustomerRequest.email().isBlank())
+                && (createCustomerRequest.phone() == null || createCustomerRequest.phone().isBlank())) {
+            throw new ValidationException(
+                    "Must have one or both field to contact.",
+                    Map.of("fieldName", "email or phone")
+            );
+        }
+
+        CustomerEntity customerEntityMapped = customerMapper.createCustomerRequestToCustomerEntity(
+                createCustomerRequest,
+                newTime,
+                newCustomerGuid
+        );
+        CustomerEntity newCustomer = customerRepository.save(customerEntityMapped);
+        return customerMapper.customerEntityToCustomerResponse(newCustomer);
+    }
+
+    @Transactional(readOnly = true)
+    public CustomerResponse getCustomer(UUID customerGuid) {
+        Optional<CustomerEntity> customerEntityOptional = customerRepository.findByGuid(customerGuid);
+
+        CustomerEntity customer = customerEntityOptional.orElseThrow(() -> {
+            return new CustomerNotFoundException(
+                    "Customer not found",
+                    Map.of("customer guid", customerGuid)
+            );
+        });
+        return customerMapper.customerEntityToCustomerResponse(customer);
+    }
+
+    @Transactional(readOnly = true)
+    public CustomerListResponse getAllCustomers() {
+        List<CustomerEntity> allCustomers = customerRepository.findAll();
+        return new CustomerListResponse(customerMapper.customerEntityListToCustomerResponseList(allCustomers));
+    }
+}
