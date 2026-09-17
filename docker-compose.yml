@@ -1,7 +1,7 @@
 services:
   customer-service:
     build: .
-    container-name: customer-service-app
+    container_name: customer-service-app
     ports:
       - "8083:8083"
     environment:
@@ -10,13 +10,13 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
     depends_on:
       db:
-        condition: service-healthy
+        condition: service_healthy
     networks:
       - customer-net
 
   db:
     image: postgres:15
-    container-name: customer-db
+    container_name: customer-db
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USERNAME}
@@ -27,7 +27,7 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - pg-data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data
 
     networks:
       - customer-net
