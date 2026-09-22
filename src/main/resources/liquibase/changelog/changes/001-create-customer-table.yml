@@ -31,8 +31,6 @@ databaseChangeLog:
               - column:
                   name: surname
                   type: VARCHAR(100)
-                  constraints:
-                    nullable: false
 
               - column:
                   name: middle_name

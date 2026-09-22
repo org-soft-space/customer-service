@@ -8,6 +8,11 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.softspace.customer.enums.CustomerType;
 
 import java.time.Instant;
@@ -15,6 +20,11 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "customer")
+@Getter
+@Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class CustomerEntity {
 
     @Id
