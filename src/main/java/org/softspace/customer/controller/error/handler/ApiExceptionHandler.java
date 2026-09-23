@@ -3,6 +3,7 @@ package org.softspace.customer.controller.error.handler;
 import jakarta.servlet.http.HttpServletRequest;
 import org.softspace.customer.dto.error.ErrorResponse;
 import org.softspace.customer.exception.CustomerNotFoundException;
+import org.softspace.customer.exception.ValidationException;
 import org.softspace.customer.exception.error.ErrorCode;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +47,21 @@ public class ApiExceptionHandler {
                 ErrorCode.VALIDATION_ERROR.name(),
                 message,
                 details,
+                request.getRequestURI(),
+                timestamp,
+                null
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ErrorResponse> validationExceptionHandler(ValidationException ex, HttpServletRequest request) {
+        String message = "Validation error.";
+        Instant timestamp = Instant.now();
+        ErrorResponse errorResponse = new ErrorResponse(
+                ex.getErrorCode().name(),
+                message,
+                ex.getDetails(),
                 request.getRequestURI(),
                 timestamp,
                 null
