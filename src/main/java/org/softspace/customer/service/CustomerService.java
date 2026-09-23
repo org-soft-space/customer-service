@@ -7,6 +7,7 @@ import org.softspace.customer.dto.customer.response.SetCustomersResponse;
 import org.softspace.customer.entity.CustomerEntity;
 import org.softspace.customer.enums.CustomerType;
 import org.softspace.customer.exception.CustomerNotFoundException;
+import org.softspace.customer.exception.ValidationException;
 import org.softspace.customer.repository.CustomerRepository;
 import org.softspace.customer.service.mapper.CustomerMapper;
 import org.springframework.stereotype.Service;
@@ -32,7 +33,13 @@ public class CustomerService {
         UUID newCustomerGuid = UUID.randomUUID();
         CustomerType defaultCustomerType = CustomerType.LEAD;
 
-        // TODO: доделать валидацию и сохранение.
+        // TODO: доделать валидацию и сохранение. === DONE ===
+        if (createCustomerRequest.email() == null && createCustomerRequest.phone() == null) {
+            throw new ValidationException(
+                    "Must have one or both field for connecting.",
+                    Map.of("fieldName", "email or phone")
+            );
+        }
 
         CustomerEntity customerEntityMapped = customerMapper.createCustomerRequestToCustomerEntity(createCustomerRequest,
                 newTime,
