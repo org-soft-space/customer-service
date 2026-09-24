@@ -4,6 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -13,6 +16,8 @@ import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
 import org.softspace.customer.entity.CustomerEntity;
 import org.softspace.customer.enums.CustomerType;
+import org.softspace.customer.exception.CustomerNotFoundException;
+import org.softspace.customer.exception.ValidationException;
 import org.softspace.customer.repository.CustomerRepository;
 import org.softspace.customer.service.mapper.CustomerMapper;
 
@@ -20,10 +25,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -99,16 +105,20 @@ public class CustomerServiceTest {
         verify(customerMapper).customerEntityToCustomerResponse(any(CustomerEntity.class));
     }
 
-    @DisplayName("Create new customer with email contact only successfully test.")
-    @Test
-    void createCustomerWithEmailContactSuccessfullyTest() {
+    @DisplayName("Create new customer with one contact only successfully test.")
+    @ParameterizedTest(name = "email = {0}, phone = {1}")
+    @MethodSource("customerParameters")
+    void createCustomerWithOneContactSuccessfullyTest(
+            String email,
+            String phone
+    ) {
         // Given
         CreateCustomerRequest createCustomerRequest = new CreateCustomerRequest(
                 DtoCustomerTestBuilder.NAME,
                 null,
                 null,
-                DtoCustomerTestBuilder.EMAIL,
-                null,
+                email,
+                phone,
                 CustomerType.LEAD,
                 null,
                 null
@@ -118,8 +128,8 @@ public class CustomerServiceTest {
                 DtoCustomerTestBuilder.NAME,
                 null,
                 null,
-                DtoCustomerTestBuilder.EMAIL,
-                null,
+                email,
+                phone,
                 CustomerType.LEAD,
                 null,
                 null,
@@ -142,7 +152,7 @@ public class CustomerServiceTest {
         assertNotNull(newCustomer);
         assertEquals(customerResponse.name(), newCustomer.name());
         assertEquals(customerResponse.email(), newCustomer.email());
-        assertNull(newCustomer.phone());
+        assertEquals(customerResponse.phone(), newCustomer.phone());
         assertEquals(customerResponse.customerType(), newCustomer.customerType());
         assertEquals(customerResponse.createdAt(), newCustomer.createdAt());
         assertEquals(customerResponse.updatedAt(), newCustomer.updatedAt());
@@ -152,57 +162,11 @@ public class CustomerServiceTest {
         verify(customerMapper).customerEntityToCustomerResponse(any(CustomerEntity.class));
     }
 
-    @DisplayName("Create new customer with phone contact only successfully test.")
-    @Test
-    void createCustomerWithPhoneContactSuccessfullyTest() {
-        // Given
-        CreateCustomerRequest createCustomerRequest = new CreateCustomerRequest(
-                DtoCustomerTestBuilder.NAME,
-                null,
-                null,
-                null,
-                DtoCustomerTestBuilder.PHONE,
-                CustomerType.LEAD,
-                null,
-                null
+    private static Stream<Arguments> customerParameters() {
+        return Stream.of(
+                Arguments.of(DtoCustomerTestBuilder.EMAIL, null),
+                Arguments.of(null, DtoCustomerTestBuilder.PHONE)
         );
-        CustomerResponse customerResponse = new CustomerResponse(
-                DtoCustomerTestBuilder.GUID,
-                DtoCustomerTestBuilder.NAME,
-                null,
-                null,
-                null,
-                DtoCustomerTestBuilder.PHONE,
-                CustomerType.LEAD,
-                null,
-                null,
-                DtoCustomerTestBuilder.TIME,
-                DtoCustomerTestBuilder.TIME
-        );
-
-        // When
-        when(customerMapper.createCustomerRequestToCustomerEntity(eq(createCustomerRequest), any(Instant.class), any(UUID.class)))
-                .thenReturn(customerEntity);
-        when(customerRepository.save(customerEntity))
-                .thenReturn(customerEntity);
-        when(customerMapper.customerEntityToCustomerResponse(customerEntity))
-                .thenReturn(customerResponse);
-
-        // Execute
-        CustomerResponse newCustomer = customerService.createNewCustomer(createCustomerRequest);
-
-        // Then
-        assertNotNull(newCustomer);
-        assertEquals(customerResponse.name(), newCustomer.name());
-        assertEquals(customerResponse.phone(), newCustomer.phone());
-        assertNull(newCustomer.email());
-        assertEquals(customerResponse.customerType(), newCustomer.customerType());
-        assertEquals(customerResponse.createdAt(), newCustomer.createdAt());
-        assertEquals(customerResponse.updatedAt(), newCustomer.updatedAt());
-
-        verify(customerMapper).createCustomerRequestToCustomerEntity(eq(createCustomerRequest), any(Instant.class), any(UUID.class));
-        verify(customerRepository).save(any(CustomerEntity.class));
-        verify(customerMapper).customerEntityToCustomerResponse(any(CustomerEntity.class));
     }
 
     @DisplayName("Get customer successfully test.")
@@ -276,5 +240,59 @@ public class CustomerServiceTest {
 
         verify(customerRepository).findAll();
         verify(customerMapper).customerEntityListToSetCustomerResponse(any(List.class));
+    }
+
+    // Negative tests
+
+    @DisplayName("Create new customer without any contacts. Exception test.")
+    @ParameterizedTest(name = "email = {0}, phone = {1}")
+    @MethodSource("customerNegativeParameters")
+    void createCustomerWithoutContactsExceptionTest(
+            String email,
+            String phone
+    ) {
+        // Given
+        CreateCustomerRequest createCustomerRequest = new CreateCustomerRequest(
+                DtoCustomerTestBuilder.NAME,
+                null,
+                null,
+                email,
+                phone,
+                CustomerType.LEAD,
+                null,
+                null
+        );
+
+        // Execute
+        assertThrows(
+                ValidationException.class,
+                () -> customerService.createNewCustomer(createCustomerRequest)
+        );
+    }
+
+    private static Stream<Arguments> customerNegativeParameters() {
+        return Stream.of(
+                Arguments.of(null, null),
+                Arguments.of(null, ""),
+                Arguments.of("", null),
+                Arguments.of("", "")
+        );
+    }
+
+    @DisplayName("Get customer not found exception test.")
+    @Test
+    void getCustomerNotFoundExceptionTest() {
+
+        // When
+        when(customerRepository.findByGuid(DtoCustomerTestBuilder.GUID))
+                .thenThrow(CustomerNotFoundException.class);
+
+        // Execute
+        assertThrows(
+                CustomerNotFoundException.class,
+                () -> customerService.getCustomer(DtoCustomerTestBuilder.GUID)
+        );
+
+        verify(customerRepository).findByGuid(any(UUID.class));
     }
 }
