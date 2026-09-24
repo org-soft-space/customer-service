@@ -5,7 +5,6 @@ import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
 import org.softspace.customer.dto.customer.response.SetCustomersResponse;
 import org.softspace.customer.entity.CustomerEntity;
-import org.softspace.customer.enums.CustomerType;
 import org.softspace.customer.exception.CustomerNotFoundException;
 import org.softspace.customer.exception.ValidationException;
 import org.softspace.customer.repository.CustomerRepository;
@@ -31,10 +30,9 @@ public class CustomerService {
 
         Instant newTime = Instant.now();
         UUID newCustomerGuid = UUID.randomUUID();
-        CustomerType defaultCustomerType = CustomerType.LEAD;
 
-        // TODO: доделать валидацию и сохранение. === DONE ===
-        if (createCustomerRequest.email() == null && createCustomerRequest.phone() == null) {
+        if ((createCustomerRequest.email() == null || createCustomerRequest.email().isBlank())
+                && (createCustomerRequest.phone() == null || createCustomerRequest.phone().isBlank())) {
             throw new ValidationException(
                     "Must have one or both field for connecting.",
                     Map.of("fieldName", "email or phone")
@@ -43,8 +41,7 @@ public class CustomerService {
 
         CustomerEntity customerEntityMapped = customerMapper.createCustomerRequestToCustomerEntity(createCustomerRequest,
                 newTime,
-                newCustomerGuid,
-                defaultCustomerType);
+                newCustomerGuid);
         CustomerEntity newCustomer = customerRepository.save(customerEntityMapped);
         return customerMapper.customerEntityToCustomerResponse(newCustomer);
     }
