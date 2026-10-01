@@ -24,7 +24,7 @@ public class ApiExceptionHandler {
         String message = "Customer not found.";
         Instant timestamp = Instant.now();
         ErrorResponse errorResponse = new ErrorResponse(
-                ErrorCode.CUSTOMER_NOT_FOUND.name(),
+                ex.getErrorCode().name(),
                 message,
                 ex.getDetails(),
                 request.getRequestURI(),
