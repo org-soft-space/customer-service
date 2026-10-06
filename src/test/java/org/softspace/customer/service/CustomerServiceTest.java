@@ -7,10 +7,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mapstruct.Mapper;
+import org.mapstruct.factory.Mappers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.softspace.customer.dto.customer.response.SetCustomersResponse;
+import org.softspace.customer.dto.customer.response.CustomerListResponse;
 import org.softspace.customer.dtotest.DtoCustomerTestBuilder;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
@@ -99,6 +101,7 @@ public class CustomerServiceTest {
         assertEquals(customerResponse.responsibleManagerGuid(), newCustomer.responsibleManagerGuid());
         assertEquals(customerResponse.createdAt(), newCustomer.createdAt());
         assertEquals(customerResponse.updatedAt(), newCustomer.updatedAt());
+        assertEquals(newCustomer.updatedAt(), newCustomer.createdAt());
 
         verify(customerMapper).createCustomerRequestToCustomerEntity(eq(createCustomerRequest), any(Instant.class), any(UUID.class));
         verify(customerRepository).save(any(CustomerEntity.class));
@@ -208,22 +211,22 @@ public class CustomerServiceTest {
     void getAllCustomerSuccessfullyTest() {
         // Given
         CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
-        SetCustomersResponse setCustomersResponse = new SetCustomersResponse(List.of(customerResponse));
+        CustomerListResponse customerListResponse = new CustomerListResponse(List.of(customerResponse));
 
         // When
         when(customerRepository.findAll())
                 .thenReturn(List.of(customerEntity));
-        when(customerMapper.customerEntityListToSetCustomerResponse(List.of(customerEntity)))
-                .thenReturn(setCustomersResponse);
+        when(customerMapper.customerEntityListToCustomerResponseList(List.of(customerEntity)))
+                .thenReturn(List.of(customerResponse));
 
         // Execute
-        SetCustomersResponse allCustomers = customerService.getAllCustomers();
+        CustomerListResponse allCustomers = customerService.getAllCustomers();
 
         // then
         assertNotNull(allCustomers);
-        assertNotNull(allCustomers.setCustomers());
+        assertNotNull(allCustomers.customers());
 
-        CustomerResponse customer = allCustomers.setCustomers().getFirst();
+        CustomerResponse customer = allCustomers.customers().getFirst();
 
         assertNotNull(customer);
         assertEquals(customerResponse.guid(), customer.guid());
@@ -239,7 +242,7 @@ public class CustomerServiceTest {
         assertEquals(customerResponse.updatedAt(), customer.updatedAt());
 
         verify(customerRepository).findAll();
-        verify(customerMapper).customerEntityListToSetCustomerResponse(any(List.class));
+        verify(customerMapper).customerEntityListToCustomerResponseList(any(List.class));
     }
 
     // Negative tests
@@ -285,7 +288,7 @@ public class CustomerServiceTest {
 
         // When
         when(customerRepository.findByGuid(DtoCustomerTestBuilder.GUID))
-                .thenThrow(CustomerNotFoundException.class);
+                .thenReturn(Optional.empty());
 
         // Execute
         assertThrows(
