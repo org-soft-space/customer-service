@@ -19,6 +19,7 @@ public record CreateCustomerRequest(
         @Size(max = 100)
         String middleName,
         @Email
+        @Size(max = 255)
         String email,
         @Pattern(
                 regexp = DtoPattern.phonePattern,

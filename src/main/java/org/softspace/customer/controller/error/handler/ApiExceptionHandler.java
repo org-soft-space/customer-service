@@ -56,7 +56,7 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponse> validationExceptionHandler(ValidationException ex, HttpServletRequest request) {
-        String message = "Validation error.";
+        String message = ex.getMessage() == null ? "Validation error." : ex.getMessage();
         Instant timestamp = Instant.now();
         ErrorResponse errorResponse = new ErrorResponse(
                 ex.getErrorCode().name(),
