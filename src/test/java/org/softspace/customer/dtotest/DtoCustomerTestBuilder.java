@@ -1,6 +1,8 @@
 package org.softspace.customer.dtotest;
 
+import org.openapitools.jackson.nullable.JsonNullable;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
+import org.softspace.customer.dto.customer.request.UpdateCustomerRequest;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
 import org.softspace.customer.enums.CustomerType;
 
@@ -58,4 +60,16 @@ public class DtoCustomerTestBuilder {
         );
     }
 
+    public static UpdateCustomerRequest getUpdateCustomerRequest() {
+        return new UpdateCustomerRequest(
+                JsonNullable.of("UpdatedName"),
+                JsonNullable.of("UpdatedSurname"),
+                JsonNullable.of("UpdatedMiddleName"),
+                JsonNullable.of("updated.email@softspace.org"),
+                JsonNullable.of("+981123456"),
+                JsonNullable.of(CustomerType.CUSTOMER),
+                JsonNullable.of(UUID.randomUUID()),
+                JsonNullable.of(UUID.randomUUID())
+        );
+    }
 }

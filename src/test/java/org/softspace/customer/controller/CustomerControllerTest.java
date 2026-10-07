@@ -6,7 +6,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.openapitools.jackson.nullable.JsonNullable;
+import org.softspace.customer.config.JacksonConfig;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
+import org.softspace.customer.dto.customer.request.UpdateCustomerRequest;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
 import org.softspace.customer.dto.customer.response.SetCustomersResponse;
 import org.softspace.customer.dtotest.DtoCustomerTestBuilder;
@@ -17,6 +20,7 @@ import org.softspace.customer.exception.error.ErrorCode;
 import org.softspace.customer.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -26,9 +30,11 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -37,6 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ActiveProfiles("test")
 @WebMvcTest(CustomerController.class)
+@Import(JacksonConfig.class)
 public class CustomerControllerTest {
 
     @Autowired
@@ -51,6 +58,7 @@ public class CustomerControllerTest {
     private static final String BASE_URL = "/api/v1/customers";
 
     // Positive tests.
+
     @DisplayName("Create new customer. Positive test")
     @Test
     void shouldCreateNewCustomerSuccessfullyTest() throws Exception {
@@ -147,6 +155,37 @@ public class CustomerControllerTest {
         verify(customerService).getAllCustomers();
     }
 
+    @DisplayName("Update customer. Positive test")
+    @Test
+    void shouldUpdateCustomerSuccessfullyTest() throws Exception {
+        // Given
+        UpdateCustomerRequest updateCustomerRequest = DtoCustomerTestBuilder.getUpdateCustomerRequest();
+        CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
+        UUID customerGuid = DtoCustomerTestBuilder.GUID;
+
+        // When
+        when(customerService.updateCustomer(customerGuid, updateCustomerRequest)).thenReturn(customerResponse);
+
+        // Execute and expect
+        mockMvc.perform(patch(BASE_URL + "/{guid}", customerGuid)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateCustomerRequest)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.guid").value(customerResponse.guid().toString()))
+                .andExpect(jsonPath("$.name").value(customerResponse.name()))
+                .andExpect(jsonPath("$.surname").value(customerResponse.surname()))
+                .andExpect(jsonPath("$.middleName").value(customerResponse.middleName()))
+                .andExpect(jsonPath("$.email").value(customerResponse.email()))
+                .andExpect(jsonPath("$.phone").value(customerResponse.phone()))
+                .andExpect(jsonPath("$.customerType").value(customerResponse.customerType().toString()))
+                .andExpect(jsonPath("$.userProfileGuid").value(customerResponse.userProfileGuid().toString()))
+                .andExpect(jsonPath("$.responsibleManagerGuid").value(customerResponse.responsibleManagerGuid().toString()))
+                .andExpect(jsonPath("$.createdAt").value(customerResponse.createdAt().toString()))
+                .andExpect(jsonPath("$.updatedAt").value(customerResponse.updatedAt().toString()));
+
+        verify(customerService).updateCustomer(customerGuid, updateCustomerRequest);
+    }
 
     // Negative tests
 
@@ -260,5 +299,47 @@ public class CustomerControllerTest {
                 .andExpect(jsonPath("$.path").value(BASE_URL));
 
         verify(customerService).getAllCustomers();
+    }
+
+    @DisplayName("Update customer method throws MethodArgumentNotValidException. Negative test")
+    @ParameterizedTest(name = "email = {0}, phone = {1}, expectedFieldName = {2}")
+    @MethodSource("invalidUpdatingParams")
+    void shouldUpdateCustomerMethodArgumentNotValidExceptionTest(
+            String email,
+            String phone,
+            String expectedFieldName
+    ) throws Exception {
+        // Given
+        UUID guid = DtoCustomerTestBuilder.GUID;
+        UpdateCustomerRequest updateCustomerRequest = new UpdateCustomerRequest(
+                JsonNullable.of("Test"),
+                JsonNullable.of("Test"),
+                JsonNullable.of("Test"),
+                JsonNullable.of(email),
+                JsonNullable.of(phone),
+                JsonNullable.of(CustomerType.LEAD),
+                JsonNullable.of(UUID.randomUUID()),
+                JsonNullable.of(UUID.randomUUID())
+        );
+
+        // Execute and expect
+        mockMvc.perform(patch(BASE_URL + "/{guid}", guid)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateCustomerRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(ErrorCode.VALIDATION_ERROR.name()))
+                .andExpect(jsonPath("$.path").value(BASE_URL + "/" + guid))
+                .andExpect(jsonPath("$.details." + expectedFieldName).exists());
+        ;
+
+        verify(customerService, never()).updateCustomer(any(UUID.class), any(UpdateCustomerRequest.class));
+    }
+
+    private static Stream<Arguments> invalidUpdatingParams() {
+        return Stream.of(
+                Arguments.of(DtoCustomerTestBuilder.EMAIL, "phone", "phone"),
+                Arguments.of("email", DtoCustomerTestBuilder.PHONE, "email")
+        );
     }
 }

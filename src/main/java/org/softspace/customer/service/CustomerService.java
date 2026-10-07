@@ -60,7 +60,7 @@ public class CustomerService {
         CustomerEntity customer = customerEntityOptional.orElseThrow(() -> {
             return new CustomerNotFoundException(
                     "Customer not found",
-                    Map.of("customer guid", customerGuid)
+                    Map.of("GUID", customerGuid)
             );
         });
         return customerMapper.customerEntityToCustomerResponse(customer);
@@ -79,7 +79,7 @@ public class CustomerService {
         CustomerEntity customerEntity = customerRepository.findByGuid(customerGuid).orElseThrow(
                 () -> new CustomerNotFoundException(
                         "Customer not found",
-                        Map.of("Customer GUID", customerGuid)
+                        Map.of("GUID", customerGuid)
                 )
         );
         customerValidator.validateUpdateCustomerRequest(

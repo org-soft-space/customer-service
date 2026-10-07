@@ -11,6 +11,8 @@ import java.util.function.Predicate;
 @Component
 public class CustomerValidator {
 
+    public static final String NO_ONE_FIELD_FOR_CONNECTION = "Must have one or both field for connecting.";
+
     // TODO: name или customerType переданы как null — 400 Bad Request;
     // TODO: после обновления должен оставаться хотя бы один непустой контакт: email или телефон;
     // TODO: пустое тело запроса — 400 Bad Request;
@@ -44,8 +46,8 @@ public class CustomerValidator {
 
         if (lastEmail == null && lastPhone == null) {
             throw new ValidationException(
-                    "Must have one or both field for connecting.",
-                    Map.of("fieldName", "email", "fieldName", "phone")
+                    NO_ONE_FIELD_FOR_CONNECTION,
+                    Map.of()
             );
         }
 
