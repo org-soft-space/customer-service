@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: customer-service
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  liquibase:
+    change-log: classpath:liquibase/changelog/master.yml
+    default-schema: ${POSTGRES_SCHEMA:customer}
+
+server:
+  port: 8084
+
+logging:
+  level:
+    org.softspace.customer: DEBUG
+    org.springframework: INFO
