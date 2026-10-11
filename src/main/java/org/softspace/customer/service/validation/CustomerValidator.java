@@ -1,5 +1,6 @@
 package org.softspace.customer.service.validation;
 
+import org.apache.commons.lang3.StringUtils;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.softspace.customer.dto.customer.request.UpdateCustomerRequest;
 import org.softspace.customer.exception.ValidationException;
@@ -12,14 +13,13 @@ import java.util.function.Predicate;
 public class CustomerValidator {
 
     public static final String NO_ONE_FIELD_FOR_CONNECTION = "Must have one or both field for connecting.";
+    public static final String NO_ONE_FIELD_IN_OBJECT = "There is no one parameter.";
 
-    // TODO: name или customerType переданы как null — 400 Bad Request;
-    // TODO: после обновления должен оставаться хотя бы один непустой контакт: email или телефон;
-    // TODO: пустое тело запроса — 400 Bad Request;
+
     public void validateUpdateCustomerRequest(
             UpdateCustomerRequest updateCustomerRequest,
-            String lastEmail,
-            String lastPhone
+            String previousEmail,
+            String previousPhone
     ) {
 
         validateParameter(
@@ -36,15 +36,15 @@ public class CustomerValidator {
 
         JsonNullable<String> email = updateCustomerRequest.email();
         if (email.isPresent()) {
-            lastEmail = email.get();
+            previousEmail = email.get();
         }
 
         JsonNullable<String> phone = updateCustomerRequest.phone();
         if (phone.isPresent()) {
-            lastPhone = phone.get();
+            previousPhone = phone.get();
         }
 
-        if (lastEmail == null && lastPhone == null) {
+        if (StringUtils.isBlank(previousEmail) && StringUtils.isBlank(previousPhone)){
             throw new ValidationException(
                     NO_ONE_FIELD_FOR_CONNECTION,
                     Map.of()
@@ -53,7 +53,7 @@ public class CustomerValidator {
 
         if (!isOneParameter(updateCustomerRequest)) {
             throw new ValidationException(
-                    "There is no one parameter.",
+                    NO_ONE_FIELD_IN_OBJECT,
                     Map.of()
             );
         }
@@ -77,13 +77,13 @@ public class CustomerValidator {
     }
 
     private boolean isOneParameter(UpdateCustomerRequest updateCustomerRequest) {
-        return (updateCustomerRequest.name().isPresent() && updateCustomerRequest.name().get() != null)
-                || (updateCustomerRequest.surname().isPresent() && updateCustomerRequest.surname().get()!= null)
-                || (updateCustomerRequest.middleName().isPresent() && updateCustomerRequest.middleName().get()!= null)
-                || (updateCustomerRequest.email().isPresent() && updateCustomerRequest.email().get()!= null)
-                || (updateCustomerRequest.phone().isPresent() && updateCustomerRequest.phone().get()!= null)
-                || (updateCustomerRequest.customerType().isPresent() && updateCustomerRequest.customerType().get()!= null)
-                || (updateCustomerRequest.userProfileGuid().isPresent() && updateCustomerRequest.userProfileGuid().get()!= null)
-                || (updateCustomerRequest.responsibleManagerGuid().isPresent() && updateCustomerRequest.responsibleManagerGuid().get()!= null);
+        return (updateCustomerRequest.name().isPresent())
+                || (updateCustomerRequest.surname().isPresent())
+                || (updateCustomerRequest.middleName().isPresent())
+                || (updateCustomerRequest.email().isPresent())
+                || (updateCustomerRequest.phone().isPresent())
+                || (updateCustomerRequest.customerType().isPresent())
+                || (updateCustomerRequest.userProfileGuid().isPresent())
+                || (updateCustomerRequest.responsibleManagerGuid().isPresent());
     }
 }

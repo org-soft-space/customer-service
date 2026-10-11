@@ -17,8 +17,6 @@ import java.util.UUID;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface CustomerMapper {
 
-    // TODO: уточнить, будет ли id ignore здесь являться как доп защита,
-    //  в случае если в dto добавят это поле.
     CustomerResponse customerEntityToCustomerResponse(CustomerEntity customerEntity);
 
     @Mapping(target = "id", ignore = true)

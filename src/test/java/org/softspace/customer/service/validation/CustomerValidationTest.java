@@ -75,6 +75,58 @@ public class CustomerValidationTest {
         );
     }
 
+    @DisplayName("Validation nullable fields successfully test.")
+    @ParameterizedTest(name = """
+            surname = {0},
+            middleName = {1},
+            email = {2},
+            phone = {3},
+            userProfileGuid = {4},
+            responsibleManagerGuid = {5}
+            """)
+    @MethodSource("eachNullableFieldParameters")
+    void customerEachNullableFieldWithNullTest(
+            String surname,
+            String middleName,
+            String email,
+            String phone,
+            UUID userProfileGuid,
+            UUID responsibleManagerGuid
+    ) {
+        String lastEmail = DtoCustomerTestBuilder.EMAIL;
+        String lastPhone = DtoCustomerTestBuilder.PHONE;
+        UpdateCustomerRequest updateCustomerRequest = new UpdateCustomerRequest(
+                JsonNullable.of("Name"),
+                JsonNullable.of(surname),
+                JsonNullable.of(middleName),
+                JsonNullable.of(email),
+                JsonNullable.of(phone),
+                JsonNullable.of(CustomerType.LEAD),
+                JsonNullable.of(userProfileGuid),
+                JsonNullable.of(responsibleManagerGuid)
+        );
+
+        assertDoesNotThrow(
+                () -> validator.validateUpdateCustomerRequest(
+                        updateCustomerRequest,
+                        lastEmail,
+                        lastPhone
+                )
+        );
+    }
+
+    private static Stream<Arguments> eachNullableFieldParameters() {
+        return Stream.of(
+                Arguments.of(null, "MiddleName", DtoCustomerTestBuilder.EMAIL, DtoCustomerTestBuilder.PHONE, UUID.randomUUID(), UUID.randomUUID()),
+                Arguments.of("Surname", null, DtoCustomerTestBuilder.EMAIL, DtoCustomerTestBuilder.PHONE, UUID.randomUUID(), UUID.randomUUID()),
+                Arguments.of("Surname", "MiddleName", null, DtoCustomerTestBuilder.PHONE, UUID.randomUUID(), UUID.randomUUID()),
+                Arguments.of("Surname", "MiddleName", DtoCustomerTestBuilder.EMAIL, null, UUID.randomUUID(), UUID.randomUUID()),
+                Arguments.of("Surname", "MiddleName", DtoCustomerTestBuilder.EMAIL, DtoCustomerTestBuilder.PHONE, null, UUID.randomUUID()),
+                Arguments.of("Surname", "MiddleName", DtoCustomerTestBuilder.EMAIL, DtoCustomerTestBuilder.PHONE, UUID.randomUUID(), null)
+                );
+    }
+
+
     // Negative tests
 
     @DisplayName("Input empty UpdateCustomerRequest with undefined fields negative test.")
