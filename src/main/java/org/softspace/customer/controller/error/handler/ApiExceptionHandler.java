@@ -1,6 +1,7 @@
 package org.softspace.customer.controller.error.handler;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.apache.commons.lang3.StringUtils;
 import org.softspace.customer.dto.error.ErrorResponse;
 import org.softspace.customer.exception.CustomerNotFoundException;
 import org.softspace.customer.exception.ValidationException;
@@ -11,6 +12,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -47,6 +49,24 @@ public class ApiExceptionHandler {
                 ErrorCode.VALIDATION_ERROR.name(),
                 message,
                 details,
+                request.getRequestURI(),
+                timestamp,
+                null
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> typeMismatchException(MethodArgumentTypeMismatchException exception, HttpServletRequest request){
+        String message = StringUtils.isBlank(exception.getMessage()) ?  "Type mismatch error" : exception.getMessage();
+        Instant timestamp = Instant.now();
+        ErrorResponse errorResponse = new ErrorResponse(
+                ErrorCode.TYPE_MISMATCH_ERROR.name(),
+                message,
+                Map.of(
+                        "fieldName", exception.getName(),
+                        "value", exception.getValue()
+                ),
                 request.getRequestURI(),
                 timestamp,
                 null

@@ -1,6 +1,7 @@
 package org.softspace.customer.controller.error.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -24,10 +25,13 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -240,5 +244,42 @@ public class ApiExceptionHandlerTest {
                 .andExpect(jsonPath("$.path").value(BASE_URL + "/" + customerGuid));
 
         verify(customerService).updateCustomer(customerGuid, updateCustomerRequest);
+    }
+
+    @DisplayName("Get customer type mismatch exception. Negative test")
+    @Test
+    void shouldGetCustomerTypeMismatchException() throws Exception {
+        // Given
+        String customerGuid = "abc";
+
+        // Execute and expect
+        MvcResult mvcResult = mockMvc.perform(get(BASE_URL + "/{guid}", customerGuid))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(ErrorCode.TYPE_MISMATCH_ERROR.name()))
+                .andExpect(jsonPath("$.path").value(BASE_URL + "/" + customerGuid))
+                .andReturn();
+        assertInstanceOf(MethodArgumentTypeMismatchException.class, mvcResult.getResolvedException());
+        verify(customerService, never()).getCustomer(any());
+    }
+
+    @DisplayName("Update customer type mismatch exception. Negative test")
+    @Test
+    void shouldUpdateCustomerTypeMismatchException() throws Exception {
+        // Given
+        String customerGuid = "abc";
+        UpdateCustomerRequest request = DtoCustomerTestBuilder.getUpdateCustomerRequest();
+
+        // Execute and expect
+        MvcResult mvcResult = mockMvc.perform(patch(BASE_URL + "/{guid}", customerGuid)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(ErrorCode.TYPE_MISMATCH_ERROR.name()))
+                .andExpect(jsonPath("$.path").value(BASE_URL + "/" + customerGuid))
+                .andReturn();
+        assertInstanceOf(MethodArgumentTypeMismatchException.class, mvcResult.getResolvedException());
+        verify(customerService, never()).updateCustomer(any(), any());
     }
 }
