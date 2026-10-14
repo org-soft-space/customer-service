@@ -31,6 +31,7 @@ public interface CustomerMapper {
     @Mapping(target = "responsibleManagerGuid", source = "createCustomerRequest.responsibleManagerGuid")
     @Mapping(target = "createdAt", source = "newTime")
     @Mapping(target = "updatedAt", source = "newTime")
+    @Mapping(target = "deletedAt", ignore = true)
     CustomerEntity createCustomerRequestToCustomerEntity(CreateCustomerRequest createCustomerRequest,
                                                          Instant newTime, UUID customerGuid);
 

@@ -55,7 +55,7 @@ public class CustomerService {
 
     @Transactional(readOnly = true)
     public CustomerResponse getCustomer(UUID customerGuid) {
-        Optional<CustomerEntity> customerEntityOptional = customerRepository.findByGuid(customerGuid);
+        Optional<CustomerEntity> customerEntityOptional = customerRepository.findByGuidAndDeletedAtIsNull(customerGuid);
 
         CustomerEntity customer = customerEntityOptional.orElseThrow(() -> {
             return new CustomerNotFoundException(
@@ -68,7 +68,7 @@ public class CustomerService {
 
     @Transactional(readOnly = true)
     public SetCustomersResponse getAllCustomers() {
-        List<CustomerEntity> allCustomers = customerRepository.findAll();
+        List<CustomerEntity> allCustomers = customerRepository.findAllByDeletedAtIsNull();
         return customerMapper.customerEntityListToSetCustomerResponse(allCustomers);
     }
 
@@ -76,12 +76,13 @@ public class CustomerService {
     public CustomerResponse updateCustomer(UUID customerGuid, UpdateCustomerRequest updateCustomerRequest) {
 
         log.info("Update customer: {}", customerGuid);
-        CustomerEntity customerEntity = customerRepository.findByGuid(customerGuid).orElseThrow(
-                () -> new CustomerNotFoundException(
-                        "Customer not found",
-                        Map.of("GUID", customerGuid)
-                )
-        );
+        CustomerEntity customerEntity = customerRepository.findByGuidAndDeletedAtIsNull(customerGuid)
+                .orElseThrow(
+                        () -> new CustomerNotFoundException(
+                                "Customer not found",
+                                Map.of("GUID", customerGuid)
+                        )
+                );
         customerValidator.validateUpdateCustomerRequest(
                 updateCustomerRequest,
                 customerEntity.getEmail(),
@@ -90,6 +91,23 @@ public class CustomerService {
         Instant newUpdatedTime = Instant.now();
         applyChange(customerEntity, updateCustomerRequest, newUpdatedTime);
         return customerMapper.customerEntityToCustomerResponse(customerEntity);
+    }
+
+    @Transactional
+    public void deleteCustomer(UUID customerGuid) {
+
+        log.info("Delete customer: {}", customerGuid);
+        CustomerEntity customerEntity = customerRepository.findByGuidAndDeletedAtIsNull(customerGuid)
+                .orElseThrow(
+                        () -> new CustomerNotFoundException(
+                                "Customer not found",
+                                Map.of("GUID", customerGuid)
+                        )
+                );
+
+        Instant timeOfDeleted = Instant.now();
+        customerEntity.setDeletedAt(timeOfDeleted);
+        customerEntity.setUpdatedAt(timeOfDeleted);
     }
 
     private void applyChange(

@@ -10,6 +10,7 @@ import org.softspace.customer.service.CustomerService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,5 +51,13 @@ public class CustomerController {
             @PathVariable UUID guid, @RequestBody @Valid UpdateCustomerRequest updateCustomerRequest
     ) {
         return ResponseEntity.status(HttpStatus.OK).body(customerService.updateCustomer(guid, updateCustomerRequest));
+    }
+
+    @DeleteMapping("/{guid}")
+    public ResponseEntity<Void> deleteCustomer(
+            @PathVariable UUID guid
+    ) {
+        customerService.deleteCustomer(guid);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }

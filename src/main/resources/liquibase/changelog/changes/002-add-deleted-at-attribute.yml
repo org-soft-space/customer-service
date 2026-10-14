@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-add-deleted-at-attribute
+      author: customer-service
+      changes:
+        - addColumn:
+            tableName: customer
+            columns:
+              - column:
+                  name: deleted_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: true
