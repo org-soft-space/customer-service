@@ -73,7 +73,8 @@ public class CustomerServiceTest {
                 DtoCustomerTestBuilder.USER_PROFILE_GUID,
                 DtoCustomerTestBuilder.RESPONSIBLE_MANAGER_GUID,
                 DtoCustomerTestBuilder.TIME,
-                DtoCustomerTestBuilder.TIME
+                DtoCustomerTestBuilder.TIME,
+                null
         );
 
     }
@@ -221,7 +222,7 @@ public class CustomerServiceTest {
         SetCustomersResponse setCustomersResponse = new SetCustomersResponse(List.of(customerResponse));
 
         // When
-        when(customerRepository.findAll())
+        when(customerRepository.findAllByDeletedAtIsNull())
                 .thenReturn(List.of(customerEntity));
         when(customerMapper.customerEntityListToSetCustomerResponse(List.of(customerEntity)))
                 .thenReturn(setCustomersResponse);
@@ -248,7 +249,7 @@ public class CustomerServiceTest {
         assertEquals(customerResponse.createdAt(), customer.createdAt());
         assertEquals(customerResponse.updatedAt(), customer.updatedAt());
 
-        verify(customerRepository).findAll();
+        verify(customerRepository).findAllByDeletedAtIsNull();
         verify(customerMapper).customerEntityListToSetCustomerResponse(any(List.class));
     }
 
