@@ -1,40 +1,47 @@
 package org.softspace.customer.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.softspace.customer.config.JacksonConfig;
+import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
+import org.softspace.customer.dto.customer.request.UpdateCustomerRequest;
+import org.softspace.customer.dto.customer.response.CustomerResponse;
+import org.softspace.customer.dtotest.DtoCustomerTestBuilder;
+import org.softspace.customer.service.CustomerService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
+import java.util.UUID;
+
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
-import org.softspace.customer.dto.customer.response.CustomerResponse;
 import org.softspace.customer.dto.customer.response.CustomerListResponse;
-import org.softspace.customer.dtotest.DtoCustomerTestBuilder;
 import org.softspace.customer.enums.CustomerType;
 import org.softspace.customer.exception.CustomerNotFoundException;
 import org.softspace.customer.exception.ValidationException;
 import org.softspace.customer.exception.error.ErrorCode;
-import org.softspace.customer.service.CustomerService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.util.List;
-import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -43,6 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ActiveProfiles("test")
 @WebMvcTest(CustomerController.class)
+@Import(JacksonConfig.class)
 public class CustomerControllerTest {
 
     @Autowired
@@ -87,7 +95,6 @@ public class CustomerControllerTest {
                 .andExpect(jsonPath("$.updatedAt").value(customerResponse.updatedAt().toString()));
 
         verify(customerService).createNewCustomer(createCustomerRequest);
-
     }
 
     @DisplayName("Get customer. Positive test")
@@ -125,7 +132,6 @@ public class CustomerControllerTest {
         // Given
         CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
         CustomerListResponse customerListResponse = new CustomerListResponse(List.of(customerResponse));
-        UUID customerGuid = DtoCustomerTestBuilder.GUID;
 
         // When
         when(customerService.getAllCustomers()).thenReturn(customerListResponse);
@@ -151,7 +157,37 @@ public class CustomerControllerTest {
         verify(customerService).getAllCustomers();
     }
 
+    @DisplayName("Update customer. Positive test")
+    @Test
+    void shouldUpdateCustomerSuccessfullyTest() throws Exception {
+        // Given
+        UpdateCustomerRequest updateCustomerRequest = DtoCustomerTestBuilder.getUpdateCustomerRequest();
+        CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
+        UUID customerGuid = DtoCustomerTestBuilder.GUID;
 
+        // When
+        when(customerService.updateCustomer(customerGuid, updateCustomerRequest)).thenReturn(customerResponse);
+
+        // Execute and expect
+        mockMvc.perform(patch(BASE_URL + "/{guid}", customerGuid)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateCustomerRequest)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.guid").value(customerResponse.guid().toString()))
+                .andExpect(jsonPath("$.name").value(customerResponse.name()))
+                .andExpect(jsonPath("$.surname").value(customerResponse.surname()))
+                .andExpect(jsonPath("$.middleName").value(customerResponse.middleName()))
+                .andExpect(jsonPath("$.email").value(customerResponse.email()))
+                .andExpect(jsonPath("$.phone").value(customerResponse.phone()))
+                .andExpect(jsonPath("$.customerType").value(customerResponse.customerType().toString()))
+                .andExpect(jsonPath("$.userProfileGuid").value(customerResponse.userProfileGuid().toString()))
+                .andExpect(jsonPath("$.responsibleManagerGuid").value(customerResponse.responsibleManagerGuid().toString()))
+                .andExpect(jsonPath("$.createdAt").value(customerResponse.createdAt().toString()))
+                .andExpect(jsonPath("$.updatedAt").value(customerResponse.updatedAt().toString()));
+
+        verify(customerService).updateCustomer(customerGuid, updateCustomerRequest);
+    }
     // Negative tests
 
     @DisplayName("Create new customer method throws MethodArgumentNotValidException. Negative test")
@@ -344,3 +380,4 @@ public class CustomerControllerTest {
         verify(customerService).getAllCustomers();
     }
 }
+

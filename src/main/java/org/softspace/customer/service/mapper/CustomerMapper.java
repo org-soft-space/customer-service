@@ -44,5 +44,5 @@ public interface CustomerMapper {
     CustomerEntity createCustomerRequestToCustomerEntity(CreateCustomerRequest createCustomerRequest,
                                                          Instant newTime, UUID customerGuid);
 
-    List<CustomerResponse>  customerEntityListToCustomerResponseList(List<CustomerEntity> customerEntityList);
+    List<CustomerResponse> customerEntityListToCustomerResponseList(List<CustomerEntity> customerEntityList);
 }

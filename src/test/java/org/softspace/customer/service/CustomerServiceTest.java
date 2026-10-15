@@ -7,11 +7,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mapstruct.Mapper;
-import org.mapstruct.factory.Mappers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openapitools.jackson.nullable.JsonNullable;
+import org.softspace.customer.dto.customer.request.UpdateCustomerRequest;
 import org.softspace.customer.dto.customer.response.CustomerListResponse;
 import org.softspace.customer.dtotest.DtoCustomerTestBuilder;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
@@ -22,6 +22,7 @@ import org.softspace.customer.exception.CustomerNotFoundException;
 import org.softspace.customer.exception.ValidationException;
 import org.softspace.customer.repository.CustomerRepository;
 import org.softspace.customer.service.mapper.CustomerMapper;
+import org.softspace.customer.service.validation.CustomerValidator;
 
 import java.time.Instant;
 import java.util.List;
@@ -29,11 +30,15 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,6 +53,9 @@ public class CustomerServiceTest {
 
     @Mock
     private CustomerMapper customerMapper;
+
+    @Mock
+    private CustomerValidator customerValidator;
 
     private CustomerEntity customerEntity;
 
@@ -216,6 +224,7 @@ public class CustomerServiceTest {
         // When
         when(customerRepository.findAll())
                 .thenReturn(List.of(customerEntity));
+
         when(customerMapper.customerEntityListToCustomerResponseList(List.of(customerEntity)))
                 .thenReturn(List.of(customerResponse));
 
@@ -243,6 +252,291 @@ public class CustomerServiceTest {
 
         verify(customerRepository).findAll();
         verify(customerMapper).customerEntityListToCustomerResponseList(any(List.class));
+    }
+
+
+    @DisplayName("Update customer with all fields. Successfully test.")
+    @Test
+    void updateCustomerWithAllFieldsTest() {
+
+        // Given
+        UUID customerGuid = customerEntity.getGuid();
+        UUID otherGuid = UUID.randomUUID();
+        UpdateCustomerRequest updateCustomerRequest = new UpdateCustomerRequest(
+                JsonNullable.of("UpdatedName"),
+                JsonNullable.of("UpdatedSurname"),
+                JsonNullable.of("UpdatedMiddleName"),
+                JsonNullable.of("updated.email@softspace.org"),
+                JsonNullable.of("+981123456"),
+                JsonNullable.of(CustomerType.CUSTOMER),
+                JsonNullable.of(otherGuid),
+                JsonNullable.of(otherGuid)
+        );
+        CustomerResponse customerResponse = new CustomerResponse(
+                customerGuid,
+                "UpdatedName",
+                "UpdatedSurname",
+                "UpdatedMiddleName",
+                "updated.email@softspace.org",
+                "+9811234561",
+                CustomerType.CUSTOMER,
+                otherGuid,
+                otherGuid,
+                customerEntity.getCreatedAt(),
+                customerEntity.getUpdatedAt()
+        );
+
+        Instant timeCreatedAtBeforeUpdate = customerEntity.getCreatedAt();
+        Instant timeUpdatedAtBeforeUpdate = customerEntity.getUpdatedAt();
+        // When
+        when(customerRepository.findByGuid(customerGuid)).thenReturn(Optional.of(customerEntity));
+        when(customerMapper.customerEntityToCustomerResponse(customerEntity)).thenReturn(customerResponse);
+
+
+        // Execute
+        CustomerResponse customerResponseResult = customerService.updateCustomer(customerGuid, updateCustomerRequest);
+
+        // Then
+        assertEquals(customerGuid, customerResponseResult.guid());
+        assertEquals(customerResponse.name(), customerResponseResult.name());
+        assertEquals(customerResponse.surname(), customerResponseResult.surname());
+        assertEquals(customerResponse.middleName(), customerResponseResult.middleName());
+        assertEquals(customerResponse.email(), customerResponseResult.email());
+        assertEquals(customerResponse.phone(), customerResponseResult.phone());
+        assertEquals(customerResponse.customerType(), customerResponseResult.customerType());
+        assertEquals(customerResponse.userProfileGuid(), customerResponseResult.userProfileGuid());
+        assertEquals(customerResponse.responsibleManagerGuid(), customerResponseResult.responsibleManagerGuid());
+
+
+        assertEquals(customerGuid, customerEntity.getGuid());
+        assertEquals(updateCustomerRequest.name().get(), customerEntity.getName());
+        assertEquals(updateCustomerRequest.surname().get(), customerEntity.getSurname());
+        assertEquals(updateCustomerRequest.middleName().get(), customerEntity.getMiddleName());
+        assertEquals(updateCustomerRequest.email().get(), customerEntity.getEmail());
+        assertEquals(updateCustomerRequest.phone().get(), customerEntity.getPhone());
+        assertEquals(updateCustomerRequest.customerType().get(), customerEntity.getCustomerType());
+        assertEquals(updateCustomerRequest.userProfileGuid().get(), customerEntity.getUserProfileGuid());
+        assertEquals(updateCustomerRequest.responsibleManagerGuid().get(), customerEntity.getResponsibleManagerGuid());
+
+
+        assertEquals(timeCreatedAtBeforeUpdate, customerEntity.getCreatedAt());
+        assertNotEquals(timeUpdatedAtBeforeUpdate, customerEntity.getUpdatedAt());
+    }
+
+    @DisplayName("Update customer with nullable fields. Successfully test.")
+    @Test
+    void updateCustomerWithNullableFieldsTest() {
+        UUID customerGuid = customerEntity.getGuid();
+        UpdateCustomerRequest updateCustomerRequest = new UpdateCustomerRequest(
+                JsonNullable.of("UpdatedName"),
+                JsonNullable.of(null),
+                JsonNullable.of(null),
+                JsonNullable.of("updated.email@softspace.org"),
+                JsonNullable.of("+981123456"),
+                JsonNullable.of(CustomerType.CUSTOMER),
+                JsonNullable.of(null),
+                JsonNullable.of(null)
+        );
+        CustomerResponse customerResponse = new CustomerResponse(
+                customerGuid,
+                "UpdatedName",
+                null,
+                null,
+                null,
+                null,
+                CustomerType.CUSTOMER,
+                null,
+                null,
+                customerEntity.getCreatedAt(),
+                customerEntity.getUpdatedAt()
+        );
+
+        // When
+        when(customerRepository.findByGuid(customerGuid)).thenReturn(Optional.of(customerEntity));
+        when(customerMapper.customerEntityToCustomerResponse(customerEntity)).thenReturn(customerResponse);
+
+        // Execute
+        CustomerResponse customerResponseResult = customerService.updateCustomer(customerGuid, updateCustomerRequest);
+
+        // Then
+        assertEquals(customerGuid, customerResponseResult.guid());
+        assertEquals(customerResponse.name(), customerResponseResult.name());
+        assertEquals(customerResponse.surname(), customerResponseResult.surname());
+        assertEquals(customerResponse.middleName(), customerResponseResult.middleName());
+        assertEquals(customerResponse.email(), customerResponseResult.email());
+        assertEquals(customerResponse.phone(), customerResponseResult.phone());
+        assertEquals(customerResponse.customerType(), customerResponseResult.customerType());
+        assertEquals(customerResponse.userProfileGuid(), customerResponseResult.userProfileGuid());
+        assertEquals(customerResponse.responsibleManagerGuid(), customerResponseResult.responsibleManagerGuid());
+
+        assertEquals(customerGuid, customerEntity.getGuid());
+        assertEquals(updateCustomerRequest.name().get(), customerEntity.getName());
+        assertEquals(updateCustomerRequest.surname().get(), customerEntity.getSurname());
+        assertEquals(updateCustomerRequest.middleName().get(), customerEntity.getMiddleName());
+        assertEquals(updateCustomerRequest.email().get(), customerEntity.getEmail());
+        assertEquals(updateCustomerRequest.phone().get(), customerEntity.getPhone());
+        assertEquals(updateCustomerRequest.customerType().get(), customerEntity.getCustomerType());
+        assertEquals(updateCustomerRequest.userProfileGuid().get(), customerEntity.getUserProfileGuid());
+        assertEquals(updateCustomerRequest.responsibleManagerGuid().get(), customerEntity.getResponsibleManagerGuid());
+    }
+
+    @DisplayName("Update customer with each nullable fields. Successfully test.")
+    @ParameterizedTest(name = """
+            name = {0},
+            surname = {1},
+            middleName = {2},
+            email = {3},
+            phone = {4},
+            customerType = {5},
+            userProfileGuid = {6},
+            responsibleManagerGuid = {7}
+            """)
+    @MethodSource("eachParams")
+    void updateCustomerWithOneFieldTest(
+            JsonNullable<String> name,
+            JsonNullable<String> surname,
+            JsonNullable<String> middleName,
+            JsonNullable<String> email,
+            JsonNullable<String> phone,
+            JsonNullable<CustomerType> customerType,
+            JsonNullable<UUID> userProfileGuid,
+            JsonNullable<UUID> responsibleManagerGuid
+    ) {
+        UUID customerGuid = customerEntity.getGuid();
+        UpdateCustomerRequest updateCustomerRequest = new UpdateCustomerRequest(
+                name,
+                surname,
+                middleName,
+                email,
+                phone,
+                customerType,
+                userProfileGuid,
+                responsibleManagerGuid
+        );
+
+        CustomerResponse customerResponse = new CustomerResponse(
+                customerGuid,
+                name.orElse(customerEntity.getName()),
+                surname.orElse(customerEntity.getSurname()),
+                middleName.orElse(customerEntity.getMiddleName()),
+                email.orElse(customerEntity.getEmail()),
+                phone.orElse(customerEntity.getPhone()),
+                customerType.orElse(customerEntity.getCustomerType()),
+                userProfileGuid.orElse(customerEntity.getUserProfileGuid()),
+                responsibleManagerGuid.orElse(customerEntity.getResponsibleManagerGuid()),
+                customerEntity.getCreatedAt(),
+                customerEntity.getUpdatedAt()
+        );
+
+        // When
+        when(customerRepository.findByGuid(customerGuid)).thenReturn(Optional.of(customerEntity));
+        when(customerMapper.customerEntityToCustomerResponse(customerEntity)).thenReturn(customerResponse);
+
+        // Execute
+        CustomerResponse customerResponseResult = customerService.updateCustomer(customerGuid, updateCustomerRequest);
+
+        // Then
+        assertAll(
+                () -> assertEquals(customerResponse.guid(), customerEntity.getGuid(), "GUID"),
+                () -> assertEquals(customerResponse.name(), customerEntity.getName(), "name"),
+                () -> assertEquals(customerResponse.surname(), customerEntity.getSurname(), "surname"),
+                () -> assertEquals(customerResponse.middleName(), customerEntity.getMiddleName(), "middleName"),
+                () -> assertEquals(customerResponse.email(), customerEntity.getEmail(), "email"),
+                () -> assertEquals(customerResponse.phone(), customerEntity.getPhone(), "phone"),
+                () -> assertEquals(customerResponse.customerType(), customerEntity.getCustomerType(), "customerType"),
+                () -> assertEquals(customerResponse.userProfileGuid(), customerEntity.getUserProfileGuid(), "userProfileGuid"),
+                () -> assertEquals(customerResponse.responsibleManagerGuid(), customerEntity.getResponsibleManagerGuid(), "responsibleManagerGuid")
+        );
+
+        assertSame(customerResponse, customerResponseResult);
+    }
+
+    private static Stream<Arguments> eachParams() {
+        UUID newGuid = UUID.randomUUID();
+        CustomerType newType = DtoCustomerTestBuilder.CUSTOMER_TYPE == CustomerType.CUSTOMER ?
+                CustomerType.LEAD : CustomerType.CUSTOMER;
+        return Stream.of(
+                Arguments.of(
+                        JsonNullable.of("UpdatedName"),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined()
+                ),
+                Arguments.of(
+                        JsonNullable.undefined(),
+                        JsonNullable.of("UpdatedSurname"),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined()
+                ),
+                Arguments.of(
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.of("UpdatedMiddleName"),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined()
+                ),
+                Arguments.of(
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.of("updated.email@softspace.org"),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined()
+                ),
+                Arguments.of(
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.of("+79997777777"),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined()
+                ),
+                Arguments.of(
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.of(newType),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined()
+                ),
+                Arguments.of(
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.of(newGuid),
+                        JsonNullable.undefined()
+                ),
+                Arguments.of(
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.undefined(),
+                        JsonNullable.of(newGuid)
+                )
+        );
     }
 
     // Negative tests
@@ -297,5 +591,32 @@ public class CustomerServiceTest {
         );
 
         verify(customerRepository).findByGuid(any(UUID.class));
+    }
+
+    @DisplayName("Update customer not found exception test.")
+    @Test
+            void updateCustomerNotFoundExceptionTest() {
+
+        // When
+        when(customerRepository.findByGuid(DtoCustomerTestBuilder.GUID))
+                .thenReturn(Optional.empty());
+
+        // Execute
+        CustomerNotFoundException result = assertThrows(
+                CustomerNotFoundException.class,
+                () -> customerService.updateCustomer(DtoCustomerTestBuilder.GUID, DtoCustomerTestBuilder.getUpdateCustomerRequest())
+        );
+
+        // Then
+        assertEquals(DtoCustomerTestBuilder.GUID, result.getDetails().get("GUID"));
+
+        verify(customerRepository).findByGuid(any(UUID.class));
+        verify(customerValidator, never()).validateUpdateCustomerRequest(
+                any(UpdateCustomerRequest.class),
+                any(String.class),
+                any(String.class)
+        );
+        verify(customerValidator, never()).validateUpdateCustomerRequest(any(), any(), any());
+        verify(customerMapper, never()).customerEntityToCustomerResponse(any(CustomerEntity.class));
     }
 }
