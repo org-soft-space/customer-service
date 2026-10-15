@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
 import org.softspace.customer.dto.customer.request.UpdateCustomerRequest;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
-import org.softspace.customer.dto.customer.response.SetCustomersResponse;
+import org.softspace.customer.dto.customer.response.CustomerListResponse;
 import org.softspace.customer.service.CustomerService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,7 +41,7 @@ public class CustomerController {
     }
 
     @GetMapping
-    public ResponseEntity<SetCustomersResponse> getAllCustomers() {
+    public ResponseEntity<CustomerListResponse> getAllCustomers() {
         return ResponseEntity.status(HttpStatus.OK).body(customerService.getAllCustomers());
     }
 
