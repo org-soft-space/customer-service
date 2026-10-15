@@ -23,6 +23,7 @@ import java.util.UUID;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -173,5 +174,20 @@ public class CustomerControllerTest {
                 .andExpect(jsonPath("$.updatedAt").value(customerResponse.updatedAt().toString()));
 
         verify(customerService).updateCustomer(customerGuid, updateCustomerRequest);
+    }
+
+
+    @DisplayName("Delete customer. Positive test")
+    @Test
+    void shouldDeleteCustomerSuccessfullyTest() throws Exception {
+        // Given
+        UUID customerGuid = DtoCustomerTestBuilder.GUID;
+
+        // Execute and expect
+        mockMvc.perform(delete(BASE_URL + "/{guid}", customerGuid))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        verify(customerService).deleteCustomer(customerGuid);
     }
 }

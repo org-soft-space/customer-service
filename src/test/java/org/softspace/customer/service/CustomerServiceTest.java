@@ -31,9 +31,11 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -252,7 +254,6 @@ public class CustomerServiceTest {
         verify(customerRepository).findAllByDeletedAtIsNull();
         verify(customerMapper).customerEntityListToSetCustomerResponse(any(List.class));
     }
-
 
     @DisplayName("Update customer with all fields. Successfully test.")
     @Test
@@ -538,6 +539,31 @@ public class CustomerServiceTest {
         );
     }
 
+    @DisplayName("Delete customer successfully test.")
+    @Test
+    void deleteCustomerSuccessfullyTest() {
+
+        // Given
+        UUID customerGuid = customerEntity.getGuid();
+
+        // When
+        when(customerRepository.findByGuidAndDeletedAtIsNull(customerGuid))
+                .thenReturn(Optional.of(customerEntity));
+
+        // Check before execute
+        assertNull(customerEntity.getDeletedAt());
+        Instant updateBeforeExecution = customerEntity.getUpdatedAt();
+
+        // Execute
+        assertDoesNotThrow(() -> customerService.deleteCustomer(customerGuid));
+
+        // then
+        assertNotNull(customerEntity.getDeletedAt());
+        assertNotEquals(updateBeforeExecution, customerEntity.getUpdatedAt());
+
+        verify(customerRepository).findByGuidAndDeletedAtIsNull(any(UUID.class));
+    }
+
     // Negative tests
 
     @DisplayName("Create new customer without any contacts. Exception test.")
@@ -618,4 +644,25 @@ public class CustomerServiceTest {
         verify(customerValidator, never()).validateUpdateCustomerRequest(any(), any(), any());
         verify(customerMapper, never()).customerEntityToCustomerResponse(any(CustomerEntity.class));
     }
+
+    @DisplayName("Delete customer CustomerNotFoundException negative test.")
+    @Test
+    void deleteCustomerNotFoundExceptionTest() {
+
+        // Given
+        UUID customerGuid = customerEntity.getGuid();
+
+        // When
+        when(customerRepository.findByGuidAndDeletedAtIsNull(customerGuid))
+                .thenReturn(Optional.empty());
+
+        // Execute and then
+        CustomerNotFoundException customerNotFoundExceptionResult = assertThrows(
+                CustomerNotFoundException.class,
+                () -> customerService.deleteCustomer(customerGuid)
+        );
+        assertEquals(customerGuid, customerNotFoundExceptionResult.getDetails().get("GUID"));
+        verify(customerRepository).findByGuidAndDeletedAtIsNull(any(UUID.class));
+    }
+
 }

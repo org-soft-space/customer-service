@@ -1,6 +1,7 @@
 package org.softspace.customer.controller.error.handler;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.softspace.customer.dto.error.ErrorResponse;
 import org.softspace.customer.exception.CustomerNotFoundException;
@@ -18,6 +19,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
@@ -25,6 +27,8 @@ public class ApiExceptionHandler {
     public ResponseEntity<ErrorResponse> customerNotFoundExceptionHandler(CustomerNotFoundException ex, HttpServletRequest request) {
         String message = "Customer not found.";
         Instant timestamp = Instant.now();
+
+        log.warn(message);
         ErrorResponse errorResponse = new ErrorResponse(
                 ex.getErrorCode().name(),
                 message,
@@ -41,6 +45,7 @@ public class ApiExceptionHandler {
         String message = "Validation error.";
         Instant timestamp = Instant.now();
 
+        log.warn(message);
         Map<String, Object> details = new HashMap<>();
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             details.put(fieldError.getField(), fieldError.getDefaultMessage());
@@ -60,6 +65,7 @@ public class ApiExceptionHandler {
     public ResponseEntity<ErrorResponse> typeMismatchException(MethodArgumentTypeMismatchException exception, HttpServletRequest request){
         String message = StringUtils.isBlank(exception.getMessage()) ?  "Type mismatch error" : exception.getMessage();
         Instant timestamp = Instant.now();
+        log.warn(message);
         ErrorResponse errorResponse = new ErrorResponse(
                 ErrorCode.TYPE_MISMATCH_ERROR.name(),
                 message,
@@ -78,6 +84,7 @@ public class ApiExceptionHandler {
     public ResponseEntity<ErrorResponse> validationExceptionHandler(ValidationException ex, HttpServletRequest request) {
         String message = ex.getMessage() == null ? "Validation error." : ex.getMessage();
         Instant timestamp = Instant.now();
+        log.warn(message);
         ErrorResponse errorResponse = new ErrorResponse(
                 ex.getErrorCode().name(),
                 message,
