@@ -6,9 +6,9 @@ import org.openapitools.jackson.nullable.JsonNullable;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
 import org.softspace.customer.dto.customer.request.UpdateCustomerRequest;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
-import org.softspace.customer.dto.customer.response.SetCustomersResponse;
 import org.softspace.customer.entity.CustomerEntity;
 import org.softspace.customer.enums.CustomerType;
+import org.softspace.customer.dto.customer.response.CustomerListResponse;
 import org.softspace.customer.exception.CustomerNotFoundException;
 import org.softspace.customer.exception.ValidationException;
 import org.softspace.customer.repository.CustomerRepository;
@@ -35,20 +35,23 @@ public class CustomerService {
     @Transactional
     public CustomerResponse createNewCustomer(CreateCustomerRequest createCustomerRequest) {
 
+        log.info("Create new customer: {}", createCustomerRequest.customerType());
         Instant newTime = Instant.now();
         UUID newCustomerGuid = UUID.randomUUID();
 
         if ((createCustomerRequest.email() == null || createCustomerRequest.email().isBlank())
                 && (createCustomerRequest.phone() == null || createCustomerRequest.phone().isBlank())) {
             throw new ValidationException(
-                    "Must have one or both field for connecting.",
+                    "Must have one or both field to contact.",
                     Map.of("fieldName", "email or phone")
             );
         }
 
-        CustomerEntity customerEntityMapped = customerMapper.createCustomerRequestToCustomerEntity(createCustomerRequest,
+        CustomerEntity customerEntityMapped = customerMapper.createCustomerRequestToCustomerEntity(
+                createCustomerRequest,
                 newTime,
-                newCustomerGuid);
+                newCustomerGuid
+        );
         CustomerEntity newCustomer = customerRepository.save(customerEntityMapped);
         return customerMapper.customerEntityToCustomerResponse(newCustomer);
     }
@@ -67,9 +70,9 @@ public class CustomerService {
     }
 
     @Transactional(readOnly = true)
-    public SetCustomersResponse getAllCustomers() {
+    public CustomerListResponse getAllCustomers() {
         List<CustomerEntity> allCustomers = customerRepository.findAll();
-        return customerMapper.customerEntityListToSetCustomerResponse(allCustomers);
+        return new CustomerListResponse(customerMapper.customerEntityListToCustomerResponseList(allCustomers));
     }
 
     @Transactional

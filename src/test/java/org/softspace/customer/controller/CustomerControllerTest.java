@@ -7,7 +7,6 @@ import org.softspace.customer.config.JacksonConfig;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
 import org.softspace.customer.dto.customer.request.UpdateCustomerRequest;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
-import org.softspace.customer.dto.customer.response.SetCustomersResponse;
 import org.softspace.customer.dtotest.DtoCustomerTestBuilder;
 import org.softspace.customer.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +23,7 @@ import java.util.UUID;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import org.softspace.customer.dto.customer.response.CustomerListResponse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -64,10 +64,10 @@ public class CustomerControllerTest {
                         .content(objectMapper.writeValueAsString(createCustomerRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").doesNotExist())
                 .andExpect(jsonPath("$.guid").value(customerResponse.guid().toString()))
                 .andExpect(jsonPath("$.name").value(customerResponse.name()))
                 .andExpect(jsonPath("$.surname").value(customerResponse.surname()))
-
                 .andExpect(jsonPath("$.middleName").value(customerResponse.middleName()))
                 .andExpect(jsonPath("$.email").value(customerResponse.email()))
                 .andExpect(jsonPath("$.phone").value(customerResponse.phone()))
@@ -97,7 +97,6 @@ public class CustomerControllerTest {
                 .andExpect(jsonPath("$.guid").value(customerResponse.guid().toString()))
                 .andExpect(jsonPath("$.name").value(customerResponse.name()))
                 .andExpect(jsonPath("$.surname").value(customerResponse.surname()))
-
                 .andExpect(jsonPath("$.middleName").value(customerResponse.middleName()))
                 .andExpect(jsonPath("$.email").value(customerResponse.email()))
                 .andExpect(jsonPath("$.phone").value(customerResponse.phone()))
@@ -115,30 +114,28 @@ public class CustomerControllerTest {
     void shouldGetAllCustomersSuccessfullyTest() throws Exception {
         // Given
         CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
-        SetCustomersResponse setCustomersResponse = new SetCustomersResponse(List.of(customerResponse));
-        UUID customerGuid = DtoCustomerTestBuilder.GUID;
+        CustomerListResponse customerListResponse = new CustomerListResponse(List.of(customerResponse));
 
         // When
-        when(customerService.getAllCustomers()).thenReturn(setCustomersResponse);
+        when(customerService.getAllCustomers()).thenReturn(customerListResponse);
 
         // Execute and expect
         mockMvc.perform(get(BASE_URL))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.setCustomers").isArray())
-                .andExpect(jsonPath("$.setCustomers.length()").value(1))
-                .andExpect(jsonPath("$.setCustomers[0].guid").value(customerResponse.guid().toString()))
-                .andExpect(jsonPath("$.setCustomers[0].name").value(customerResponse.name()))
-                .andExpect(jsonPath("$.setCustomers[0].surname").value(customerResponse.surname()))
-
-                .andExpect(jsonPath("$.setCustomers[0].middleName").value(customerResponse.middleName()))
-                .andExpect(jsonPath("$.setCustomers[0].email").value(customerResponse.email()))
-                .andExpect(jsonPath("$.setCustomers[0].phone").value(customerResponse.phone()))
-                .andExpect(jsonPath("$.setCustomers[0].customerType").value(customerResponse.customerType().toString()))
-                .andExpect(jsonPath("$.setCustomers[0].userProfileGuid").value(customerResponse.userProfileGuid().toString()))
-                .andExpect(jsonPath("$.setCustomers[0].responsibleManagerGuid").value(customerResponse.responsibleManagerGuid().toString()))
-                .andExpect(jsonPath("$.setCustomers[0].createdAt").value(customerResponse.createdAt().toString()))
-                .andExpect(jsonPath("$.setCustomers[0].updatedAt").value(customerResponse.updatedAt().toString()));
+                .andExpect(jsonPath("$.customers").isArray())
+                .andExpect(jsonPath("$.customers.length()").value(1))
+                .andExpect(jsonPath("$.customers[0].guid").value(customerResponse.guid().toString()))
+                .andExpect(jsonPath("$.customers[0].name").value(customerResponse.name()))
+                .andExpect(jsonPath("$.customers[0].surname").value(customerResponse.surname()))
+                .andExpect(jsonPath("$.customers[0].middleName").value(customerResponse.middleName()))
+                .andExpect(jsonPath("$.customers[0].email").value(customerResponse.email()))
+                .andExpect(jsonPath("$.customers[0].phone").value(customerResponse.phone()))
+                .andExpect(jsonPath("$.customers[0].customerType").value(customerResponse.customerType().toString()))
+                .andExpect(jsonPath("$.customers[0].userProfileGuid").value(customerResponse.userProfileGuid().toString()))
+                .andExpect(jsonPath("$.customers[0].responsibleManagerGuid").value(customerResponse.responsibleManagerGuid().toString()))
+                .andExpect(jsonPath("$.customers[0].createdAt").value(customerResponse.createdAt().toString()))
+                .andExpect(jsonPath("$.customers[0].updatedAt").value(customerResponse.updatedAt().toString()));
 
         verify(customerService).getAllCustomers();
     }
