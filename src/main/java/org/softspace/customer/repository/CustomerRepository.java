@@ -12,4 +12,12 @@ public interface CustomerRepository extends JpaRepository<CustomerEntity, Long> 
     Optional<CustomerEntity> findByGuidAndDeletedAtIsNull(UUID guid);
 
     List<CustomerEntity> findAllByDeletedAtIsNull();
+
+    List<CustomerEntity> findAllByDeletedAtIsNotNull();
+
+    Optional<CustomerEntity> findByGuidAndDeletedAtIsNotNull(UUID guid);
+
+    Optional<CustomerEntity> findByGuid(UUID guid);
+
+    void deleteByGuidAndDeletedAtIsNotNull(UUID guid);
 }
