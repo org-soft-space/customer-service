@@ -1,7 +1,8 @@
 package org.softspace.customer.controller.error.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Assertions;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -22,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -135,6 +137,82 @@ public class ApiExceptionHandlerTest {
                 .andExpect(jsonPath("$.path").value(BASE_URL));
 
         verify(customerService).createNewCustomer(createCustomerRequest);
+    }
+
+    @DisplayName("Create customer method throws UnrecognizedPropertyException. Negative test")
+    @Test
+    void shouldCreateCustomerUnrecognizedPropertyExceptionTest() throws Exception {
+        // Given
+        String createCustomerRequest = """
+                {
+                  "name": "Name",
+                  "customerType": "LEAD",
+                  "unknownField": "test"
+                }
+                """;
+
+        // Execute and expect
+        MvcResult mvcResult = mockMvc.perform(post(BASE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createCustomerRequest))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(ErrorCode.FIELD_NOT_ALLOWED.name()))
+                .andExpect(jsonPath("$.path").value(BASE_URL))
+                .andReturn();
+
+        assertInstanceOf(UnrecognizedPropertyException.class, mvcResult.getResolvedException().getCause());
+        verify(customerService, never()).createNewCustomer(any());
+    }
+
+    @DisplayName("Create customer method throws InvalidFormatException. Negative test")
+    @Test
+    void shouldCreateCustomerInvalidFormatExceptionTest() throws Exception {
+        // Given
+        String createCustomerRequest = """
+                {
+                  "name": "Name",
+                  "customerType": "TEST"
+                }
+                """;
+
+        // Execute and expect
+        MvcResult mvcResult = mockMvc.perform(post(BASE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createCustomerRequest))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(ErrorCode.FIELD_INVALID.name()))
+                .andExpect(jsonPath("$.path").value(BASE_URL))
+                .andReturn();
+
+        assertInstanceOf(InvalidFormatException.class, mvcResult.getResolvedException().getCause());
+        verify(customerService, never()).createNewCustomer(any());
+    }
+
+    @DisplayName("Create customer method with invalid JSON. Negative test")
+    @Test
+    void shouldCreateCustomerInvalidJsonExceptionTest() throws Exception {
+        // Given
+        String createCustomerRequest = """
+                {
+                  name": "Name",
+                  "customerType": "LEAD"
+                }
+                """;
+
+        // Execute and expect
+        MvcResult mvcResult = mockMvc.perform(post(BASE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createCustomerRequest))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(ErrorCode.VALIDATION_ERROR.name()))
+                .andExpect(jsonPath("$.path").value(BASE_URL))
+                .andReturn();
+
+        assertInstanceOf(HttpMessageNotReadableException.class, mvcResult.getResolvedException());
+        verify(customerService, never()).createNewCustomer(any());
     }
 
     @DisplayName("Get customer method throws CustomerNotFoundException. Negative test")
