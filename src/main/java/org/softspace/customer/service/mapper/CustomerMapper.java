@@ -12,7 +12,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface CustomerMapper {
 

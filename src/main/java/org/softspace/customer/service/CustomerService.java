@@ -5,10 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
 import org.softspace.customer.dto.customer.request.UpdateCustomerRequest;
+import org.softspace.customer.dto.customer.response.CustomerListResponse;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
 import org.softspace.customer.entity.CustomerEntity;
 import org.softspace.customer.enums.CustomerType;
-import org.softspace.customer.dto.customer.response.CustomerListResponse;
 import org.softspace.customer.exception.CustomerNotFoundException;
 import org.softspace.customer.exception.ValidationException;
 import org.softspace.customer.repository.CustomerRepository;
@@ -58,7 +58,7 @@ public class CustomerService {
 
     @Transactional(readOnly = true)
     public CustomerResponse getCustomer(UUID customerGuid) {
-        Optional<CustomerEntity> customerEntityOptional = customerRepository.findByGuid(customerGuid);
+        Optional<CustomerEntity> customerEntityOptional = customerRepository.findByGuidAndDeletedAtIsNull(customerGuid);
 
         CustomerEntity customer = customerEntityOptional.orElseThrow(() -> {
             return new CustomerNotFoundException(
@@ -71,7 +71,7 @@ public class CustomerService {
 
     @Transactional(readOnly = true)
     public CustomerListResponse getAllCustomers() {
-        List<CustomerEntity> allCustomers = customerRepository.findAll();
+        List<CustomerEntity> allCustomers = customerRepository.findAllByDeletedAtIsNull();
         return new CustomerListResponse(customerMapper.customerEntityListToCustomerResponseList(allCustomers));
     }
 
@@ -79,12 +79,13 @@ public class CustomerService {
     public CustomerResponse updateCustomer(UUID customerGuid, UpdateCustomerRequest updateCustomerRequest) {
 
         log.info("Update customer: {}", customerGuid);
-        CustomerEntity customerEntity = customerRepository.findByGuid(customerGuid).orElseThrow(
-                () -> new CustomerNotFoundException(
-                        "Customer not found",
-                        Map.of("GUID", customerGuid)
-                )
-        );
+        CustomerEntity customerEntity = customerRepository.findByGuidAndDeletedAtIsNull(customerGuid)
+                .orElseThrow(
+                        () -> new CustomerNotFoundException(
+                                "Customer not found",
+                                Map.of("GUID", customerGuid)
+                        )
+                );
         customerValidator.validateUpdateCustomerRequest(
                 updateCustomerRequest,
                 customerEntity.getEmail(),
@@ -93,6 +94,23 @@ public class CustomerService {
         Instant newUpdatedTime = Instant.now();
         applyChange(customerEntity, updateCustomerRequest, newUpdatedTime);
         return customerMapper.customerEntityToCustomerResponse(customerEntity);
+    }
+
+    @Transactional
+    public void deleteCustomer(UUID customerGuid) {
+
+        log.info("Delete customer: {}", customerGuid);
+        CustomerEntity customerEntity = customerRepository.findByGuidAndDeletedAtIsNull(customerGuid)
+                .orElseThrow(
+                        () -> new CustomerNotFoundException(
+                                "Customer not found",
+                                Map.of("GUID", customerGuid)
+                        )
+                );
+
+        Instant timeOfDeleted = Instant.now();
+        customerEntity.setDeletedAt(timeOfDeleted);
+        customerEntity.setUpdatedAt(timeOfDeleted);
     }
 
     private void applyChange(

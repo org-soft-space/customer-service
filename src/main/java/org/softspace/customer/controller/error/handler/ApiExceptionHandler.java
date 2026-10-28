@@ -1,10 +1,10 @@
 package org.softspace.customer.controller.error.handler;
 
-import jakarta.servlet.http.HttpServletRequest;
-import org.apache.commons.lang3.StringUtils;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.softspace.customer.dto.error.ErrorResponse;
 import org.softspace.customer.exception.CustomerNotFoundException;
 import org.softspace.customer.exception.ValidationException;
@@ -119,6 +119,7 @@ public class ApiExceptionHandler {
     public ResponseEntity<ErrorResponse> typeMismatchException(MethodArgumentTypeMismatchException exception, HttpServletRequest request){
         String message = StringUtils.isBlank(exception.getMessage()) ?  "Type mismatch error" : exception.getMessage();
         Instant timestamp = Instant.now();
+        log.warn(message);
         ErrorResponse errorResponse = new ErrorResponse(
                 ErrorCode.TYPE_MISMATCH_ERROR.name(),
                 message,
@@ -135,7 +136,7 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponse> validationExceptionHandler(ValidationException ex, HttpServletRequest request) {
-        String message = "Validation error.";
+        String message = ex.getMessage() == null ? "Validation error." : ex.getMessage();
         Instant timestamp = Instant.now();
         log.warn(message, ex);
         ErrorResponse errorResponse = new ErrorResponse(

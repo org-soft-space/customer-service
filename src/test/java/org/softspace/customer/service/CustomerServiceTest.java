@@ -31,9 +31,11 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -73,7 +75,8 @@ public class CustomerServiceTest {
                 DtoCustomerTestBuilder.USER_PROFILE_GUID,
                 DtoCustomerTestBuilder.RESPONSIBLE_MANAGER_GUID,
                 DtoCustomerTestBuilder.TIME,
-                DtoCustomerTestBuilder.TIME
+                DtoCustomerTestBuilder.TIME,
+                null
         );
 
     }
@@ -188,7 +191,7 @@ public class CustomerServiceTest {
         CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
 
         // When
-        when(customerRepository.findByGuid(DtoCustomerTestBuilder.GUID))
+        when(customerRepository.findByGuidAndDeletedAtIsNull(DtoCustomerTestBuilder.GUID))
                 .thenReturn(Optional.of(customerEntity));
         when(customerMapper.customerEntityToCustomerResponse(customerEntity))
                 .thenReturn(customerResponse);
@@ -210,7 +213,7 @@ public class CustomerServiceTest {
         assertEquals(customerResponse.createdAt(), customer.createdAt());
         assertEquals(customerResponse.updatedAt(), customer.updatedAt());
 
-        verify(customerRepository).findByGuid(any(UUID.class));
+        verify(customerRepository).findByGuidAndDeletedAtIsNull(any(UUID.class));
         verify(customerMapper).customerEntityToCustomerResponse(any(CustomerEntity.class));
     }
 
@@ -222,7 +225,7 @@ public class CustomerServiceTest {
         CustomerListResponse customerListResponse = new CustomerListResponse(List.of(customerResponse));
 
         // When
-        when(customerRepository.findAll())
+        when(customerRepository.findAllByDeletedAtIsNull())
                 .thenReturn(List.of(customerEntity));
 
         when(customerMapper.customerEntityListToCustomerResponseList(List.of(customerEntity)))
@@ -250,10 +253,9 @@ public class CustomerServiceTest {
         assertEquals(customerResponse.createdAt(), customer.createdAt());
         assertEquals(customerResponse.updatedAt(), customer.updatedAt());
 
-        verify(customerRepository).findAll();
+        verify(customerRepository).findAllByDeletedAtIsNull();
         verify(customerMapper).customerEntityListToCustomerResponseList(any(List.class));
     }
-
 
     @DisplayName("Update customer with all fields. Successfully test.")
     @Test
@@ -289,7 +291,7 @@ public class CustomerServiceTest {
         Instant timeCreatedAtBeforeUpdate = customerEntity.getCreatedAt();
         Instant timeUpdatedAtBeforeUpdate = customerEntity.getUpdatedAt();
         // When
-        when(customerRepository.findByGuid(customerGuid)).thenReturn(Optional.of(customerEntity));
+        when(customerRepository.findByGuidAndDeletedAtIsNull(customerGuid)).thenReturn(Optional.of(customerEntity));
         when(customerMapper.customerEntityToCustomerResponse(customerEntity)).thenReturn(customerResponse);
 
 
@@ -352,7 +354,7 @@ public class CustomerServiceTest {
         );
 
         // When
-        when(customerRepository.findByGuid(customerGuid)).thenReturn(Optional.of(customerEntity));
+        when(customerRepository.findByGuidAndDeletedAtIsNull(customerGuid)).thenReturn(Optional.of(customerEntity));
         when(customerMapper.customerEntityToCustomerResponse(customerEntity)).thenReturn(customerResponse);
 
         // Execute
@@ -429,7 +431,7 @@ public class CustomerServiceTest {
         );
 
         // When
-        when(customerRepository.findByGuid(customerGuid)).thenReturn(Optional.of(customerEntity));
+        when(customerRepository.findByGuidAndDeletedAtIsNull(customerGuid)).thenReturn(Optional.of(customerEntity));
         when(customerMapper.customerEntityToCustomerResponse(customerEntity)).thenReturn(customerResponse);
 
         // Execute
@@ -539,6 +541,31 @@ public class CustomerServiceTest {
         );
     }
 
+    @DisplayName("Delete customer successfully test.")
+    @Test
+    void deleteCustomerSuccessfullyTest() {
+
+        // Given
+        UUID customerGuid = customerEntity.getGuid();
+
+        // When
+        when(customerRepository.findByGuidAndDeletedAtIsNull(customerGuid))
+                .thenReturn(Optional.of(customerEntity));
+
+        // Check before execute
+        assertNull(customerEntity.getDeletedAt());
+        Instant updateBeforeExecution = customerEntity.getUpdatedAt();
+
+        // Execute
+        assertDoesNotThrow(() -> customerService.deleteCustomer(customerGuid));
+
+        // then
+        assertNotNull(customerEntity.getDeletedAt());
+        assertNotEquals(updateBeforeExecution, customerEntity.getUpdatedAt());
+
+        verify(customerRepository).findByGuidAndDeletedAtIsNull(any(UUID.class));
+    }
+
     // Negative tests
 
     @DisplayName("Create new customer without any contacts. Exception test.")
@@ -581,8 +608,8 @@ public class CustomerServiceTest {
     void getCustomerNotFoundExceptionTest() {
 
         // When
-        when(customerRepository.findByGuid(DtoCustomerTestBuilder.GUID))
-                .thenReturn(Optional.empty());
+        when(customerRepository.findByGuidAndDeletedAtIsNull(DtoCustomerTestBuilder.GUID))
+                .thenThrow(CustomerNotFoundException.class);
 
         // Execute
         assertThrows(
@@ -590,7 +617,7 @@ public class CustomerServiceTest {
                 () -> customerService.getCustomer(DtoCustomerTestBuilder.GUID)
         );
 
-        verify(customerRepository).findByGuid(any(UUID.class));
+        verify(customerRepository).findByGuidAndDeletedAtIsNull(any(UUID.class));
     }
 
     @DisplayName("Update customer not found exception test.")
@@ -598,7 +625,7 @@ public class CustomerServiceTest {
     void updateCustomerNotFoundExceptionTest() {
 
         // When
-        when(customerRepository.findByGuid(DtoCustomerTestBuilder.GUID))
+        when(customerRepository.findByGuidAndDeletedAtIsNull(DtoCustomerTestBuilder.GUID))
                 .thenReturn(Optional.empty());
 
         // Execute
@@ -610,7 +637,7 @@ public class CustomerServiceTest {
         // Then
         assertEquals(DtoCustomerTestBuilder.GUID, result.getDetails().get("GUID"));
 
-        verify(customerRepository).findByGuid(any(UUID.class));
+        verify(customerRepository).findByGuidAndDeletedAtIsNull(any(UUID.class));
         verify(customerValidator, never()).validateUpdateCustomerRequest(
                 any(UpdateCustomerRequest.class),
                 any(String.class),
@@ -619,4 +646,25 @@ public class CustomerServiceTest {
         verify(customerValidator, never()).validateUpdateCustomerRequest(any(), any(), any());
         verify(customerMapper, never()).customerEntityToCustomerResponse(any(CustomerEntity.class));
     }
+
+    @DisplayName("Delete customer CustomerNotFoundException negative test.")
+    @Test
+    void deleteCustomerNotFoundExceptionTest() {
+
+        // Given
+        UUID customerGuid = customerEntity.getGuid();
+
+        // When
+        when(customerRepository.findByGuidAndDeletedAtIsNull(customerGuid))
+                .thenReturn(Optional.empty());
+
+        // Execute and then
+        CustomerNotFoundException customerNotFoundExceptionResult = assertThrows(
+                CustomerNotFoundException.class,
+                () -> customerService.deleteCustomer(customerGuid)
+        );
+        assertEquals(customerGuid, customerNotFoundExceptionResult.getDetails().get("GUID"));
+        verify(customerRepository).findByGuidAndDeletedAtIsNull(any(UUID.class));
+    }
+
 }
