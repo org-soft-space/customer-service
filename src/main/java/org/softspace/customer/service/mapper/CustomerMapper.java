@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface CustomerMapper {
 
@@ -45,4 +46,5 @@ public interface CustomerMapper {
                                                          Instant newTime, UUID customerGuid);
 
     List<CustomerResponse>  customerEntityListToCustomerResponseList(List<CustomerEntity> customerEntityList);
+
 }

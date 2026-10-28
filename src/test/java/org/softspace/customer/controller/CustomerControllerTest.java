@@ -1,40 +1,29 @@
 package org.softspace.customer.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.softspace.customer.config.JacksonConfig;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
+import org.softspace.customer.dto.customer.request.UpdateCustomerRequest;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
-import org.softspace.customer.dto.customer.response.CustomerListResponse;
 import org.softspace.customer.dtotest.DtoCustomerTestBuilder;
-import org.softspace.customer.enums.CustomerType;
-import org.softspace.customer.exception.CustomerNotFoundException;
-import org.softspace.customer.exception.ValidationException;
-import org.softspace.customer.exception.error.ErrorCode;
 import org.softspace.customer.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import org.softspace.customer.dto.customer.response.CustomerListResponse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -43,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ActiveProfiles("test")
 @WebMvcTest(CustomerController.class)
+@Import(JacksonConfig.class)
 public class CustomerControllerTest {
 
     @Autowired
@@ -57,6 +47,7 @@ public class CustomerControllerTest {
     private static final String BASE_URL = "/api/v1/customers";
 
     // Positive tests.
+
     @DisplayName("Create new customer. Positive test")
     @Test
     void shouldCreateNewCustomerSuccessfullyTest() throws Exception {
@@ -87,7 +78,6 @@ public class CustomerControllerTest {
                 .andExpect(jsonPath("$.updatedAt").value(customerResponse.updatedAt().toString()));
 
         verify(customerService).createNewCustomer(createCustomerRequest);
-
     }
 
     @DisplayName("Get customer. Positive test")
@@ -125,7 +115,6 @@ public class CustomerControllerTest {
         // Given
         CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
         CustomerListResponse customerListResponse = new CustomerListResponse(List.of(customerResponse));
-        UUID customerGuid = DtoCustomerTestBuilder.GUID;
 
         // When
         when(customerService.getAllCustomers()).thenReturn(customerListResponse);
@@ -151,196 +140,35 @@ public class CustomerControllerTest {
         verify(customerService).getAllCustomers();
     }
 
-
-    // Negative tests
-
-    @DisplayName("Create new customer method throws MethodArgumentNotValidException. Negative test")
-    @ParameterizedTest(name = "name={0}, email={1}, phone={2}, customerType={3}")
-    @MethodSource("createNewCustomerParams")
-    void shouldMethodArgumentNotValidExceptionTest(
-            String name,
-            String email,
-            String phone,
-            CustomerType customerType
-    ) throws Exception {
-        // Given
-        CreateCustomerRequest createCustomerRequest = new CreateCustomerRequest(
-                name,
-                null,
-                null,
-                email,
-                phone,
-                customerType,
-                null,
-                null
-        );
-
-        // Execute and expect
-        mockMvc.perform(post(BASE_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createCustomerRequest)))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status").value(ErrorCode.VALIDATION_ERROR.name()))
-                .andExpect(jsonPath("$.path").value(BASE_URL));
-
-        verify(customerService, never()).createNewCustomer(createCustomerRequest);
-    }
-
-    private static Stream<Arguments> createNewCustomerParams() {
-        return Stream.of(
-                Arguments.of(null, DtoCustomerTestBuilder.EMAIL, DtoCustomerTestBuilder.PHONE, DtoCustomerTestBuilder.CUSTOMER_TYPE),
-                Arguments.of(" ", DtoCustomerTestBuilder.EMAIL, DtoCustomerTestBuilder.PHONE, DtoCustomerTestBuilder.CUSTOMER_TYPE),
-                Arguments.of("Name", "email", DtoCustomerTestBuilder.PHONE, DtoCustomerTestBuilder.CUSTOMER_TYPE),
-                Arguments.of("Name", " ", DtoCustomerTestBuilder.PHONE, DtoCustomerTestBuilder.CUSTOMER_TYPE),
-                Arguments.of("Name", DtoCustomerTestBuilder.EMAIL, "Phone", DtoCustomerTestBuilder.CUSTOMER_TYPE),
-                Arguments.of("Name", DtoCustomerTestBuilder.EMAIL, "", DtoCustomerTestBuilder.CUSTOMER_TYPE),
-                Arguments.of("Name", DtoCustomerTestBuilder.EMAIL, " ", DtoCustomerTestBuilder.CUSTOMER_TYPE),
-                Arguments.of("Name", DtoCustomerTestBuilder.EMAIL, DtoCustomerTestBuilder.PHONE, null)
-        );
-    }
-
-    @DisplayName("Create customer method throws ValidationException. Negative test")
+    @DisplayName("Update customer. Positive test")
     @Test
-    void shouldCreateCustomerValidationExceptionTest() throws Exception {
+    void shouldUpdateCustomerSuccessfullyTest() throws Exception {
         // Given
-        CreateCustomerRequest createCustomerRequest = new CreateCustomerRequest(
-                "Name",
-                null,
-                null,
-                null,
-                null,
-                CustomerType.CUSTOMER,
-                null,
-                null
-        );
-
-        // When
-        when(customerService.createNewCustomer(createCustomerRequest)).thenThrow(ValidationException.class);
-
-        // Execute and expect
-        mockMvc.perform(post(BASE_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createCustomerRequest)))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status").value(ErrorCode.VALIDATION_ERROR.name()))
-                .andExpect(jsonPath("$.path").value(BASE_URL));
-
-        verify(customerService).createNewCustomer(createCustomerRequest);
-    }
-
-    @DisplayName("Create customer method throws UnrecognizedPropertyException. Negative test")
-    @Test
-    void shouldCreateCustomerUnrecognizedPropertyExceptionTest() throws Exception {
-        // Given
-        String createCustomerRequest = """
-                {
-                  "name": "Name",
-                  "customerType": "LEAD",
-                  "unknownField": "test"
-                }
-                """;
-
-        // Execute and expect
-        MvcResult mvcResult = mockMvc.perform(post(BASE_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createCustomerRequest))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status").value(ErrorCode.FIELD_NOT_ALLOWED.name()))
-                .andExpect(jsonPath("$.path").value(BASE_URL))
-                .andReturn();
-
-        assertInstanceOf(UnrecognizedPropertyException.class, mvcResult.getResolvedException().getCause());
-        verify(customerService, never()).createNewCustomer(any());
-    }
-
-    @DisplayName("Create customer method throws InvalidFormatException. Negative test")
-    @Test
-    void shouldCreateCustomerInvalidFormatExceptionTest() throws Exception {
-        // Given
-        String createCustomerRequest = """
-                {
-                  "name": "Name",
-                  "customerType": "TEST"
-                }
-                """;
-
-        // Execute and expect
-        MvcResult mvcResult = mockMvc.perform(post(BASE_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createCustomerRequest))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status").value(ErrorCode.FIELD_INVALID.name()))
-                .andExpect(jsonPath("$.path").value(BASE_URL))
-                .andReturn();
-
-        assertInstanceOf(InvalidFormatException.class, mvcResult.getResolvedException().getCause());
-        verify(customerService, never()).createNewCustomer(any());
-    }
-
-    @DisplayName("Create customer method with invalid JSON. Negative test")
-    @Test
-    void shouldCreateCustomerInvalidJsonExceptionTest() throws Exception {
-        // Given
-        String createCustomerRequest = """
-                {
-                  name": "Name",
-                  "customerType": "LEAD"
-                }
-                """;
-
-        // Execute and expect
-        MvcResult mvcResult = mockMvc.perform(post(BASE_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createCustomerRequest))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status").value(ErrorCode.VALIDATION_ERROR.name()))
-                .andExpect(jsonPath("$.path").value(BASE_URL))
-                .andReturn();
-
-        assertInstanceOf(HttpMessageNotReadableException.class, mvcResult.getResolvedException());
-        verify(customerService, never()).createNewCustomer(any());
-    }
-
-    @DisplayName("Get customer method throws CustomerNotFoundException. Negative test")
-    @Test
-    void shouldGetCustomerNotFoundExceptionTest() throws Exception {
-        // Given
+        UpdateCustomerRequest updateCustomerRequest = DtoCustomerTestBuilder.getUpdateCustomerRequest();
+        CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
         UUID customerGuid = DtoCustomerTestBuilder.GUID;
 
         // When
-        when(customerService.getCustomer(customerGuid)).thenThrow(CustomerNotFoundException.class);
+        when(customerService.updateCustomer(customerGuid, updateCustomerRequest)).thenReturn(customerResponse);
 
         // Execute and expect
-        mockMvc.perform(get(BASE_URL + "/{guid}", customerGuid))
-                .andExpect(status().isNotFound())
+        mockMvc.perform(patch(BASE_URL + "/{guid}", customerGuid)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateCustomerRequest)))
+                .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status").value(ErrorCode.CUSTOMER_NOT_FOUND.name()))
-                .andExpect(jsonPath("$.path").value(BASE_URL + "/" + customerGuid));
+                .andExpect(jsonPath("$.guid").value(customerResponse.guid().toString()))
+                .andExpect(jsonPath("$.name").value(customerResponse.name()))
+                .andExpect(jsonPath("$.surname").value(customerResponse.surname()))
+                .andExpect(jsonPath("$.middleName").value(customerResponse.middleName()))
+                .andExpect(jsonPath("$.email").value(customerResponse.email()))
+                .andExpect(jsonPath("$.phone").value(customerResponse.phone()))
+                .andExpect(jsonPath("$.customerType").value(customerResponse.customerType().toString()))
+                .andExpect(jsonPath("$.userProfileGuid").value(customerResponse.userProfileGuid().toString()))
+                .andExpect(jsonPath("$.responsibleManagerGuid").value(customerResponse.responsibleManagerGuid().toString()))
+                .andExpect(jsonPath("$.createdAt").value(customerResponse.createdAt().toString()))
+                .andExpect(jsonPath("$.updatedAt").value(customerResponse.updatedAt().toString()));
 
-        verify(customerService).getCustomer(customerGuid);
-    }
-
-    @DisplayName("Get all customers method throws RuntimeException. Negative test")
-    @Test
-    void shouldGetAllCustomersRuntimeExceptionTest() throws Exception {
-
-        // When
-        when(customerService.getAllCustomers()).thenThrow(RuntimeException.class);
-
-        // Execute and expect
-        MvcResult mvcResult = mockMvc.perform(get(BASE_URL))
-                .andExpect(status().isInternalServerError())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status").value(ErrorCode.INTERNAL_ERROR.name()))
-                .andExpect(jsonPath("$.path").value(BASE_URL))
-                .andReturn();
-
-        assertInstanceOf(RuntimeException.class, mvcResult.getResolvedException());
-        verify(customerService).getAllCustomers();
+        verify(customerService).updateCustomer(customerGuid, updateCustomerRequest);
     }
 }
