@@ -2,10 +2,14 @@ package org.softspace.customer.controller.error.handler;
 
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.softspace.customer.dto.error.ErrorResponse;
+import org.softspace.customer.exception.CustomerNotArchivedException;
 import org.softspace.customer.exception.CustomerNotFoundException;
 import org.softspace.customer.exception.ValidationException;
 import org.softspace.customer.exception.error.ErrorCode;
@@ -24,7 +28,10 @@ import java.util.Map;
 
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class ApiExceptionHandler {
+
+    private final Tracer tracer;
 
     @ExceptionHandler(CustomerNotFoundException.class)
     public ResponseEntity<ErrorResponse> customerNotFoundExceptionHandler(CustomerNotFoundException ex, HttpServletRequest request) {
@@ -37,7 +44,7 @@ public class ApiExceptionHandler {
                 ex.getDetails(),
                 request.getRequestURI(),
                 timestamp,
-                null
+                getTraceId()
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
     }
@@ -58,7 +65,7 @@ public class ApiExceptionHandler {
                                 "value", exception.getValue()),
                         request.getRequestURI(),
                         timestamp,
-                        null
+                        getTraceId()
                 );
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
             }
@@ -73,7 +80,7 @@ public class ApiExceptionHandler {
                         Map.of("fieldName", exception.getPropertyName()),
                         request.getRequestURI(),
                         timestamp,
-                        null
+                        getTraceId()
                 );
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
             }
@@ -88,7 +95,7 @@ public class ApiExceptionHandler {
                         Map.of(),
                         request.getRequestURI(),
                         timestamp,
-                        null
+                        getTraceId()
                 );
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
             }
@@ -110,7 +117,7 @@ public class ApiExceptionHandler {
                 details,
                 request.getRequestURI(),
                 timestamp,
-                null
+                getTraceId()
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
@@ -129,7 +136,7 @@ public class ApiExceptionHandler {
                 ),
                 request.getRequestURI(),
                 timestamp,
-                null
+                getTraceId()
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
@@ -145,9 +152,25 @@ public class ApiExceptionHandler {
                 ex.getDetails(),
                 request.getRequestURI(),
                 timestamp,
-                null
+                getTraceId()
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    @ExceptionHandler(CustomerNotArchivedException.class)
+    public ResponseEntity<ErrorResponse> customerNotArchivedExceptionHandler(CustomerNotArchivedException ex, HttpServletRequest request) {
+        String message = ex.getMessage() == null ? "Customer exists, but not archived" : ex.getMessage();
+        Instant timestamp = Instant.now();
+        log.warn(message, ex);
+        ErrorResponse errorResponse = new ErrorResponse(
+                ex.getErrorCode().name(),
+                message,
+                ex.getDetails(),
+                request.getRequestURI(),
+                timestamp,
+                getTraceId()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
     }
 
     @ExceptionHandler(RuntimeException.class)
@@ -161,8 +184,16 @@ public class ApiExceptionHandler {
                 Map.of(),
                 request.getRequestURI(),
                 timestamp,
-                null
+                getTraceId()
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    }
+
+    private String getTraceId() {
+        Span span = tracer.currentSpan();
+        if (span == null) {
+            return null;
+        }
+        return span.context().traceId();
     }
 }
