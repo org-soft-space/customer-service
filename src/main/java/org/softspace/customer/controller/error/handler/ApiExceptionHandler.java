@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.softspace.customer.dto.error.ErrorResponse;
+import org.softspace.customer.exception.CustomerNotArchivedException;
 import org.softspace.customer.exception.CustomerNotFoundException;
 import org.softspace.customer.exception.ValidationException;
 import org.softspace.customer.exception.error.ErrorCode;
@@ -154,6 +155,22 @@ public class ApiExceptionHandler {
                 getTraceId()
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    @ExceptionHandler(CustomerNotArchivedException.class)
+    public ResponseEntity<ErrorResponse> customerNotArchivedExceptionHandler(CustomerNotArchivedException ex, HttpServletRequest request) {
+        String message = ex.getMessage() == null ? "Customer exists, but not archived" : ex.getMessage();
+        Instant timestamp = Instant.now();
+        log.warn(message, ex);
+        ErrorResponse errorResponse = new ErrorResponse(
+                ex.getErrorCode().name(),
+                message,
+                ex.getDetails(),
+                request.getRequestURI(),
+                timestamp,
+                getTraceId()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
     }
 
     @ExceptionHandler(RuntimeException.class)

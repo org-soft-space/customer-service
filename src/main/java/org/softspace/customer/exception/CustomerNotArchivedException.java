@@ -11,6 +11,6 @@ public class CustomerNotArchivedException extends BusinessException {
 
     @Override
     public ErrorCode getErrorCode() {
-        return ErrorCode.ARCHIVED_CUSTOMER_NOT_FOUND;
+        return ErrorCode.CUSTOMER_NOT_ARCHIVED;
     }
 }

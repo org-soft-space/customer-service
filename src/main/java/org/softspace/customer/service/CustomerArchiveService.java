@@ -57,6 +57,12 @@ public class CustomerArchiveService {
                                 Map.of("GUID", guid)
                         )
                 );
+        if (customerEntity.getDeletedAt() == null) {
+            throw new CustomerNotArchivedException(
+                    "Customer exists, but not archived",
+                    Map.of("GUID", guid)
+            );
+        }
         Instant newUpdatedAt = Instant.now();
         customerEntity.setDeletedAt(null);
         customerEntity.setUpdatedAt(newUpdatedAt);
