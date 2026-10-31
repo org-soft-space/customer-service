@@ -55,7 +55,7 @@ public class ApiExceptionHandler {
         Throwable cause = ex.getMostSpecificCause();
         switch (cause) {
             case InvalidFormatException exception -> {
-                String message = exception.getMessage() != null? exception.getMessage() : "Invalid format of field.";
+                String message = exception.getMessage() != null ? exception.getMessage() : "Invalid format of field.";
                 log.warn(message, ex);
 
                 ErrorResponse errorResponse = new ErrorResponse(
@@ -71,7 +71,7 @@ public class ApiExceptionHandler {
             }
 
             case UnrecognizedPropertyException exception -> {
-                String message = exception.getMessage() != null? exception.getMessage() : "Unrecognized property of field.";
+                String message = exception.getMessage() != null ? exception.getMessage() : "Unrecognized property of field.";
                 log.warn(message, ex);
 
                 ErrorResponse errorResponse = new ErrorResponse(
@@ -123,8 +123,8 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> typeMismatchException(MethodArgumentTypeMismatchException exception, HttpServletRequest request){
-        String message = StringUtils.isBlank(exception.getMessage()) ?  "Type mismatch error" : exception.getMessage();
+    public ResponseEntity<ErrorResponse> typeMismatchException(MethodArgumentTypeMismatchException exception, HttpServletRequest request) {
+        String message = StringUtils.isBlank(exception.getMessage()) ? "Type mismatch error" : exception.getMessage();
         Instant timestamp = Instant.now();
         log.warn(message);
         ErrorResponse errorResponse = new ErrorResponse(

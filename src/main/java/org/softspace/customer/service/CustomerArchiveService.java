@@ -50,7 +50,7 @@ public class CustomerArchiveService {
     @Transactional
     public CustomerResponse restoreArchivedCustomer(UUID guid) {
         log.info("Restore archived customer: {}", guid);
-        CustomerEntity customerEntity = customerRepository.findByGuidAndDeletedAtIsNotNull(guid)
+        CustomerEntity customerEntity = customerRepository.findByGuid(guid)
                 .orElseThrow(
                         () -> new CustomerNotFoundException(
                                 "Archived customer not found",
@@ -70,7 +70,7 @@ public class CustomerArchiveService {
     }
 
     @Transactional
-    public void deleteArchivedCustomer(UUID guid) {
+    public void permanentlyDeleteArchivedCustomer(UUID guid) {
         log.info("Delete archived customer: {}", guid);
         CustomerEntity customerEntity = customerRepository.findByGuid(guid)
                 .orElseThrow(

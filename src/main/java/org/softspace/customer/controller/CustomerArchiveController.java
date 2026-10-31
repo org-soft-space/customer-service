@@ -43,10 +43,10 @@ public class CustomerArchiveController {
     }
 
     @DeleteMapping("/{guid}")
-    ResponseEntity<CustomerResponse> deleteArchivedCustomer(
+    ResponseEntity<Void> deleteArchivedCustomer(
             @PathVariable UUID guid
     ) {
-        customerArchiveService.deleteArchivedCustomer(guid);
+        customerArchiveService.permanentlyDeleteArchivedCustomer(guid);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }
