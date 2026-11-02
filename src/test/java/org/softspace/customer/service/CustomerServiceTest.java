@@ -606,6 +606,7 @@ public class CustomerServiceTest {
     @Test
     void getCustomerNotFoundExceptionTest() {
 
+        // TODO: Исправить ошибку thenThrow.
         // When
         when(customerRepository.findByGuidAndDeletedAtIsNull(DtoCustomerTestBuilder.GUID))
                 .thenThrow(CustomerNotFoundException.class);
