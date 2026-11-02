@@ -69,8 +69,8 @@ public class CustomerServiceTest {
                 DtoCustomerTestBuilder.NAME,
                 DtoCustomerTestBuilder.SURNAME,
                 DtoCustomerTestBuilder.MIDDLE_NAME,
-                DtoCustomerTestBuilder.EMAIL,
                 DtoCustomerTestBuilder.PHONE,
+                DtoCustomerTestBuilder.EMAIL,
                 DtoCustomerTestBuilder.CUSTOMER_TYPE,
                 DtoCustomerTestBuilder.USER_PROFILE_GUID,
                 DtoCustomerTestBuilder.RESPONSIBLE_MANAGER_GUID,
@@ -222,7 +222,6 @@ public class CustomerServiceTest {
     void getAllCustomerSuccessfullyTest() {
         // Given
         CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
-        CustomerListResponse customerListResponse = new CustomerListResponse(List.of(customerResponse));
 
         // When
         when(customerRepository.findAllByDeletedAtIsNull())
@@ -607,6 +606,7 @@ public class CustomerServiceTest {
     @Test
     void getCustomerNotFoundExceptionTest() {
 
+        // TODO: Исправить ошибку thenThrow.
         // When
         when(customerRepository.findByGuidAndDeletedAtIsNull(DtoCustomerTestBuilder.GUID))
                 .thenThrow(CustomerNotFoundException.class);

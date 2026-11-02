@@ -4,7 +4,7 @@ import org.softspace.customer.exception.error.ErrorCode;
 
 import java.util.Map;
 
-public class CustomerNotFoundException extends BusinessException{
+public class CustomerNotFoundException extends BusinessException {
     public CustomerNotFoundException(String message, Map<String, Object> details) {
         super(message, details);
     }

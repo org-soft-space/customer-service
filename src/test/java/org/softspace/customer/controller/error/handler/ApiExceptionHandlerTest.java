@@ -3,21 +3,28 @@ package org.softspace.customer.controller.error.handler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.Mockito;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.softspace.customer.config.JacksonConfig;
+import org.softspace.customer.controller.CustomerArchiveController;
 import org.softspace.customer.controller.CustomerController;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
 import org.softspace.customer.dto.customer.request.UpdateCustomerRequest;
 import org.softspace.customer.dtotest.DtoCustomerTestBuilder;
 import org.softspace.customer.enums.CustomerType;
+import org.softspace.customer.exception.CustomerNotArchivedException;
 import org.softspace.customer.exception.CustomerNotFoundException;
 import org.softspace.customer.exception.ValidationException;
 import org.softspace.customer.exception.error.ErrorCode;
+import org.softspace.customer.service.CustomerArchiveService;
 import org.softspace.customer.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -33,6 +40,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -46,7 +54,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ActiveProfiles("test")
-@WebMvcTest(CustomerController.class)
+@WebMvcTest({
+        CustomerController.class,
+        CustomerArchiveController.class
+})
 @Import(JacksonConfig.class)
 public class ApiExceptionHandlerTest {
 
@@ -59,7 +70,15 @@ public class ApiExceptionHandlerTest {
     @MockitoBean
     private CustomerService customerService;
 
+    @MockitoBean
+    private CustomerArchiveService customerArchiveService;
+
+    @MockitoBean
+    private Tracer tracer;
+
     private static String BASE_URL = "/api/v1/customers";
+
+    private static String CUSTOMER_ARCHIVE_URL = "/api/admin/v1/customers/archive";
 
     // Negative tests
 
@@ -239,14 +258,23 @@ public class ApiExceptionHandlerTest {
     void shouldGetAllCustomersRuntimeExceptionTest() throws Exception {
 
         // When
-        when(customerService.getAllCustomers()).thenThrow(RuntimeException.class);
+        String errorMessage = "Internal error test";
+        when(customerService.getAllCustomers()).thenThrow(new RuntimeException(errorMessage));
 
         // Execute and expect
-        mockMvc.perform(get(BASE_URL))
+        MvcResult mvcResult = mockMvc.perform(get(BASE_URL))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(ErrorCode.INTERNAL_ERROR.name()))
-                .andExpect(jsonPath("$.path").value(BASE_URL));
+                .andExpect(jsonPath("$.path").value(BASE_URL))
+                .andExpect(jsonPath("$.details").isEmpty())
+                .andExpect(jsonPath("$.stackTrace").doesNotExist())
+                .andExpect(jsonPath("$.exception").doesNotExist())
+                .andReturn();
+
+        String responseBody = mvcResult.getResponse().getContentAsString();
+        assertFalse(responseBody.contains(errorMessage));
+        assertFalse(responseBody.contains("RuntimeException"));
 
         verify(customerService).getAllCustomers();
     }
@@ -359,5 +387,50 @@ public class ApiExceptionHandlerTest {
                 .andReturn();
         assertInstanceOf(MethodArgumentTypeMismatchException.class, mvcResult.getResolvedException());
         verify(customerService, never()).updateCustomer(any(), any());
+    }
+
+    @DisplayName("TraceId. Get customer method throws CustomerNotFoundException with trace ID. Negative test")
+    @Test
+    void shouldGetCustomerNotFoundExceptionWithTraceIdTest() throws Exception {
+        // Given
+        UUID customerGuid = DtoCustomerTestBuilder.GUID;
+        String traceId = "abc";
+        Span span = Mockito.mock(Span.class);
+        TraceContext context = Mockito.mock(TraceContext.class);
+
+        // When
+        when(customerService.getCustomer(customerGuid)).thenThrow(CustomerNotFoundException.class);
+        when(tracer.currentSpan()).thenReturn(span);
+        when(span.context()).thenReturn(context);
+        when(context.traceId()).thenReturn(traceId);
+
+        // Execute and expect
+        mockMvc.perform(get(BASE_URL + "/{guid}", customerGuid))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(ErrorCode.CUSTOMER_NOT_FOUND.name()))
+                .andExpect(jsonPath("$.path").value(BASE_URL + "/" + customerGuid))
+                .andExpect(jsonPath("$.traceId").value(traceId));
+
+        verify(customerService).getCustomer(customerGuid);
+    }
+
+    @DisplayName("RestoreArchivedCustomer method throws CustomerNotArchivedException. Negative test")
+    @Test
+    void shouldGetCustomerNotArchivedExceptionTest() throws Exception {
+        // Given
+        UUID customerGuid = DtoCustomerTestBuilder.GUID;
+
+        // When
+        when(customerArchiveService.restoreArchivedCustomer(customerGuid)).thenThrow(CustomerNotArchivedException.class);
+
+        // Execute and expect
+        mockMvc.perform(post(CUSTOMER_ARCHIVE_URL + "/{guid}" + "/restore", customerGuid))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(ErrorCode.CUSTOMER_NOT_ARCHIVED.name()))
+                .andExpect(jsonPath("$.path").value(CUSTOMER_ARCHIVE_URL + "/" + customerGuid + "/restore"));
+
+        verify(customerArchiveService).restoreArchivedCustomer(customerGuid);
     }
 }
