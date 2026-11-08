@@ -25,13 +25,15 @@ public class CustomerValidator {
         validateParameter(
                 updateCustomerRequest.name(),
                 name -> name == null || name.isBlank(),
-                "name"
+                "name",
+                "name must not be blank"
         );
 
         validateParameter(
                 updateCustomerRequest.customerType(),
                 customerType -> customerType == null,
-                "customerType"
+                "customerType",
+                "customer type must not be null"
         );
 
         JsonNullable<String> email = updateCustomerRequest.email();
@@ -47,7 +49,7 @@ public class CustomerValidator {
         if (StringUtils.isBlank(previousEmail) && StringUtils.isBlank(previousPhone)){
             throw new ValidationException(
                     NO_ONE_FIELD_FOR_CONNECTION,
-                    Map.of()
+                    Map.of("cause", "Email or phone must be present")
             );
         }
 
@@ -62,7 +64,8 @@ public class CustomerValidator {
     private <T> void validateParameter(
             JsonNullable<T> value,
             Predicate<T> predicate,
-            String fieldName
+            String fieldName,
+            String reason
     ) {
         if (value == null || !value.isPresent()) {
             return;
@@ -71,7 +74,7 @@ public class CustomerValidator {
         if (result) {
             throw new ValidationException(
                     "Validation error of field.",
-                    Map.of("fieldName", fieldName)
+                    Map.of(fieldName, reason)
             );
         }
     }
