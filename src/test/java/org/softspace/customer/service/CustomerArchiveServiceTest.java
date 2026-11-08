@@ -8,7 +8,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.softspace.customer.dto.customer.response.CustomerListResponse;
+import org.softspace.customer.dto.customer.response.ArchivedCustomerListResponse;
+import org.softspace.customer.dto.customer.response.ArchivedCustomerResponse;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
 import org.softspace.customer.dtotest.DtoCustomerTestBuilder;
 import org.softspace.customer.entity.CustomerEntity;
@@ -79,12 +80,12 @@ public class CustomerArchiveServiceTest {
                 .thenReturn(List.of(DtoCustomerTestBuilder.getCustomerResponse()));
 
         // Then
-        CustomerListResponse response = customerArchiveService.getAllArchivedCustomers();
+        ArchivedCustomerListResponse response = customerArchiveService.getAllArchivedCustomers();
 
         assertNotNull(response);
-        assertNotNull(response.customers());
+        assertNotNull(response.archivedCustomers());
 
-        CustomerResponse customerResponseResult = response.customers().getFirst();
+        ArchivedCustomerResponse customerResponseResult = response.archivedCustomers().getFirst();
 
         assertNotNull(customerResponseResult);
 
@@ -118,7 +119,7 @@ public class CustomerArchiveServiceTest {
                 .thenReturn(customerResponse);
 
         // Then
-        CustomerResponse customerResponseResult = customerArchiveService.getArchivedCustomer(guid);
+        ArchivedCustomerResponse customerResponseResult = customerArchiveService.getArchivedCustomer(guid);
 
         assertNotNull(customerResponseResult);
 
@@ -168,7 +169,7 @@ public class CustomerArchiveServiceTest {
         assertNotNull(customerEntity.getDeletedAt());
 
         // Then
-        CustomerResponse customerResponseResult = customerArchiveService.restoreArchivedCustomer(guid);
+        ArchivedCustomerResponse customerResponseResult = customerArchiveService.restoreArchivedCustomer(guid);
 
         assertNull(customerEntity.getDeletedAt());
         assertNotEquals(updatedAtBeforeRestore, customerEntity.getUpdatedAt());

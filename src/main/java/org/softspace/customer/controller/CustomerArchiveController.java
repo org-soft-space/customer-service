@@ -2,8 +2,8 @@ package org.softspace.customer.controller;
 
 
 import lombok.RequiredArgsConstructor;
-import org.softspace.customer.dto.customer.response.CustomerListResponse;
-import org.softspace.customer.dto.customer.response.CustomerResponse;
+import org.softspace.customer.dto.customer.response.ArchivedCustomerListResponse;
+import org.softspace.customer.dto.customer.response.ArchivedCustomerResponse;
 import org.softspace.customer.service.CustomerArchiveService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,21 +23,20 @@ public class CustomerArchiveController {
 
     private final CustomerArchiveService customerArchiveService;
 
-    // TODO: Сделать дто ArchivedCustomerResponse, ArchivedCustomerListResponse.
     @GetMapping
-    ResponseEntity<CustomerListResponse> getAllArchivedCustomers() {
+    ResponseEntity<ArchivedCustomerListResponse> getAllArchivedCustomers() {
         return ResponseEntity.ok(customerArchiveService.getAllArchivedCustomers());
     }
 
     @GetMapping("/{guid}")
-    ResponseEntity<CustomerResponse> getArchivedCustomer(
+    ResponseEntity<ArchivedCustomerResponse> getArchivedCustomer(
             @PathVariable UUID guid
     ) {
         return ResponseEntity.ok(customerArchiveService.getArchivedCustomer(guid));
     }
 
     @PostMapping("/{guid}/restore")
-    ResponseEntity<CustomerResponse> restoreArchivedCustomer(
+    ResponseEntity<ArchivedCustomerResponse> restoreArchivedCustomer(
             @PathVariable UUID guid
     ) {
         return ResponseEntity.ok(customerArchiveService.restoreArchivedCustomer(guid));

@@ -3,6 +3,7 @@ package org.softspace.customer.dtotest;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
 import org.softspace.customer.dto.customer.request.UpdateCustomerRequest;
+import org.softspace.customer.dto.customer.response.ArchivedCustomerResponse;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
 import org.softspace.customer.enums.CustomerType;
 
@@ -55,6 +56,23 @@ public class DtoCustomerTestBuilder {
                 CUSTOMER_TYPE,
                 USER_PROFILE_GUID,
                 RESPONSIBLE_MANAGER_GUID,
+                TIME,
+                TIME
+        );
+    }
+
+    public static ArchivedCustomerResponse getArchivedCustomerResponse() {
+        return new ArchivedCustomerResponse(
+                GUID,
+                NAME,
+                SURNAME,
+                MIDDLE_NAME,
+                EMAIL,
+                PHONE,
+                CUSTOMER_TYPE,
+                USER_PROFILE_GUID,
+                RESPONSIBLE_MANAGER_GUID,
+                TIME,
                 TIME,
                 TIME
         );

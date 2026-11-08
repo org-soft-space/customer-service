@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.softspace.customer.dto.customer.response.CustomerListResponse;
-import org.softspace.customer.dto.customer.response.CustomerResponse;
+import org.softspace.customer.dto.customer.response.ArchivedCustomerListResponse;
+import org.softspace.customer.dto.customer.response.ArchivedCustomerResponse;
 import org.softspace.customer.dtotest.DtoCustomerTestBuilder;
 import org.softspace.customer.service.CustomerArchiveService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,8 +51,8 @@ public class CustomerArchiveControllerTest {
     @Test
     void shouldGetAllArchivedCustomersSuccessfullyTest() throws Exception {
         // Given
-        CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
-        CustomerListResponse customerListResponse = new CustomerListResponse(List.of(customerResponse));
+        ArchivedCustomerResponse customerResponse = DtoCustomerTestBuilder.getArchivedCustomerResponse();
+        ArchivedCustomerListResponse customerListResponse = new ArchivedCustomerListResponse(List.of(customerResponse));
 
         // When
         when(customerArchiveService.getAllArchivedCustomers()).thenReturn(customerListResponse);
@@ -82,7 +82,7 @@ public class CustomerArchiveControllerTest {
     @Test
     void shouldGetArchivedCustomerSuccessfullyTest() throws Exception {
         // Given
-        CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
+        ArchivedCustomerResponse customerResponse = DtoCustomerTestBuilder.getArchivedCustomerResponse();
         UUID customerGuid = customerResponse.guid();
 
         // When
@@ -111,7 +111,7 @@ public class CustomerArchiveControllerTest {
     @Test
     void shouldRestoreArchivedCustomerSuccessfullyTest() throws Exception {
         // Given
-        CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
+        ArchivedCustomerResponse customerResponse = DtoCustomerTestBuilder.getArchivedCustomerResponse();
         UUID customerGuid = customerResponse.guid();
 
         // When

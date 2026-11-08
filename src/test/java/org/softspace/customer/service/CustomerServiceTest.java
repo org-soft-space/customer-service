@@ -11,11 +11,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openapitools.jackson.nullable.JsonNullable;
+import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
 import org.softspace.customer.dto.customer.request.UpdateCustomerRequest;
 import org.softspace.customer.dto.customer.response.CustomerListResponse;
-import org.softspace.customer.dtotest.DtoCustomerTestBuilder;
-import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
+import org.softspace.customer.dtotest.DtoCustomerTestBuilder;
 import org.softspace.customer.entity.CustomerEntity;
 import org.softspace.customer.enums.CustomerType;
 import org.softspace.customer.exception.CustomerNotFoundException;
@@ -290,8 +290,10 @@ public class CustomerServiceTest {
         Instant timeCreatedAtBeforeUpdate = customerEntity.getCreatedAt();
         Instant timeUpdatedAtBeforeUpdate = customerEntity.getUpdatedAt();
         // When
-        when(customerRepository.findByGuidAndDeletedAtIsNull(customerGuid)).thenReturn(Optional.of(customerEntity));
-        when(customerMapper.customerEntityToCustomerResponse(customerEntity)).thenReturn(customerResponse);
+        when(customerRepository.findByGuidAndDeletedAtIsNull(customerGuid))
+                .thenReturn(Optional.of(customerEntity));
+        when(customerMapper.customerEntityToCustomerResponse(customerEntity))
+                .thenReturn(customerResponse);
 
 
         // Execute
@@ -430,8 +432,10 @@ public class CustomerServiceTest {
         );
 
         // When
-        when(customerRepository.findByGuidAndDeletedAtIsNull(customerGuid)).thenReturn(Optional.of(customerEntity));
-        when(customerMapper.customerEntityToCustomerResponse(customerEntity)).thenReturn(customerResponse);
+        when(customerRepository.findByGuidAndDeletedAtIsNull(customerGuid))
+                .thenReturn(Optional.of(customerEntity));
+        when(customerMapper.customerEntityToCustomerResponse(customerEntity))
+                .thenReturn(customerResponse);
 
         // Execute
         CustomerResponse customerResponseResult = customerService.updateCustomer(customerGuid, updateCustomerRequest);
@@ -606,10 +610,9 @@ public class CustomerServiceTest {
     @Test
     void getCustomerNotFoundExceptionTest() {
 
-        // TODO: Исправить ошибку thenThrow.
         // When
         when(customerRepository.findByGuidAndDeletedAtIsNull(DtoCustomerTestBuilder.GUID))
-                .thenThrow(CustomerNotFoundException.class);
+                .thenReturn(Optional.empty());
 
         // Execute
         assertThrows(

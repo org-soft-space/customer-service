@@ -2,8 +2,8 @@ package org.softspace.customer.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.softspace.customer.dto.customer.response.CustomerListResponse;
-import org.softspace.customer.dto.customer.response.CustomerResponse;
+import org.softspace.customer.dto.customer.response.ArchivedCustomerListResponse;
+import org.softspace.customer.dto.customer.response.ArchivedCustomerResponse;
 import org.softspace.customer.entity.CustomerEntity;
 import org.softspace.customer.exception.CustomerNotArchivedException;
 import org.softspace.customer.exception.CustomerNotFoundException;
@@ -26,16 +26,16 @@ public class CustomerArchiveService {
     private final CustomerMapper customerMapper;
 
     @Transactional(readOnly = true)
-    public CustomerListResponse getAllArchivedCustomers() {
+    public ArchivedCustomerListResponse getAllArchivedCustomers() {
         log.info("Get all archived customers");
         List<CustomerEntity> customerArchivedCustomerList = customerRepository.findAllByDeletedAtIsNotNull();
-        return new CustomerListResponse(
-                customerMapper.customerEntityListToCustomerResponseList(customerArchivedCustomerList)
+        return new ArchivedCustomerListResponse(
+                customerMapper.customerEntityListToArchivedCustomerResponseList(customerArchivedCustomerList)
         );
     }
 
     @Transactional(readOnly = true)
-    public CustomerResponse getArchivedCustomer(UUID guid) {
+    public ArchivedCustomerResponse getArchivedCustomer(UUID guid) {
         log.info("Get archived customer by guid: {}", guid);
         CustomerEntity customerEntity = customerRepository.findByGuidAndDeletedAtIsNotNull(guid)
                 .orElseThrow(
@@ -44,11 +44,11 @@ public class CustomerArchiveService {
                                 Map.of("GUID", guid)
                         )
                 );
-        return customerMapper.customerEntityToCustomerResponse(customerEntity);
+        return customerMapper.customerEntityToArchivedCustomerResponse(customerEntity);
     }
 
     @Transactional
-    public CustomerResponse restoreArchivedCustomer(UUID guid) {
+    public ArchivedCustomerResponse restoreArchivedCustomer(UUID guid) {
         log.info("Restore archived customer: {}", guid);
         CustomerEntity customerEntity = customerRepository.findByGuid(guid)
                 .orElseThrow(
@@ -66,7 +66,7 @@ public class CustomerArchiveService {
         Instant newUpdatedAt = Instant.now();
         customerEntity.setDeletedAt(null);
         customerEntity.setUpdatedAt(newUpdatedAt);
-        return customerMapper.customerEntityToCustomerResponse(customerEntity);
+        return customerMapper.customerEntityToArchivedCustomerResponse(customerEntity);
     }
 
     @Transactional
