@@ -28,10 +28,3 @@ jobs:
 
       - name: Build and run unit tests with Gradle
         run: ./gradlew clean build
-
-      - name: Start services via Docker Compose
-        run: docker compose up --build -d
-
-      - name: Stop services
-        if: always()
-        run: docker compose down
