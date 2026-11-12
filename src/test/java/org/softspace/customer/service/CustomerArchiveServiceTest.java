@@ -76,8 +76,8 @@ public class CustomerArchiveServiceTest {
         // When
         when(customerRepository.findAllByDeletedAtIsNotNull())
                 .thenReturn(List.of(customerEntity));
-        when(customerMapper.customerEntityListToCustomerResponseList(List.of(customerEntity)))
-                .thenReturn(List.of(DtoCustomerTestBuilder.getCustomerResponse()));
+        when(customerMapper.customerEntityListToArchivedCustomerResponseList(List.of(customerEntity)))
+                .thenReturn(List.of(DtoCustomerTestBuilder.getArchivedCustomerResponse()));
 
         // Then
         ArchivedCustomerListResponse response = customerArchiveService.getAllArchivedCustomers();
@@ -102,7 +102,7 @@ public class CustomerArchiveServiceTest {
         assertEquals(customerEntity.getUpdatedAt(), customerResponseResult.updatedAt());
 
         verify(customerRepository).findAllByDeletedAtIsNotNull();
-        verify(customerMapper).customerEntityListToCustomerResponseList(any(List.class));
+        verify(customerMapper).customerEntityListToArchivedCustomerResponseList(any(List.class));
     }
 
     @DisplayName("Get archived customer successfully test.")
@@ -110,12 +110,12 @@ public class CustomerArchiveServiceTest {
     void getArchivedCustomerSuccessfullyTest() {
         // Given
         UUID guid = DtoCustomerTestBuilder.GUID;
-        CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
+        ArchivedCustomerResponse customerResponse = DtoCustomerTestBuilder.getArchivedCustomerResponse();
 
         // When
         when(customerRepository.findByGuidAndDeletedAtIsNotNull(guid))
                 .thenReturn(Optional.of(customerEntity));
-        when(customerMapper.customerEntityToCustomerResponse(customerEntity))
+        when(customerMapper.customerEntityToArchivedCustomerResponse(customerEntity))
                 .thenReturn(customerResponse);
 
         // Then
@@ -148,7 +148,7 @@ public class CustomerArchiveServiceTest {
         assertEquals(customerEntity.getUpdatedAt(), customerResponseResult.updatedAt());
 
         verify(customerRepository).findByGuidAndDeletedAtIsNotNull(guid);
-        verify(customerMapper).customerEntityToCustomerResponse(customerEntity);
+        verify(customerMapper).customerEntityToArchivedCustomerResponse(customerEntity);
     }
 
     @DisplayName("Restore archived customer successfully test.")
@@ -156,14 +156,14 @@ public class CustomerArchiveServiceTest {
     void restoreArchivedCustomerSuccessfullyTest() {
         // Given
         UUID guid = DtoCustomerTestBuilder.GUID;
-        CustomerResponse customerResponse = DtoCustomerTestBuilder.getCustomerResponse();
+        ArchivedCustomerResponse customerResponse = DtoCustomerTestBuilder.getArchivedCustomerResponse();
 
         Instant updatedAtBeforeRestore = customerEntity.getUpdatedAt();
 
         // When
         when(customerRepository.findByGuid(guid))
                 .thenReturn(Optional.of(customerEntity));
-        when(customerMapper.customerEntityToCustomerResponse(customerEntity))
+        when(customerMapper.customerEntityToArchivedCustomerResponse(customerEntity))
                 .thenReturn(customerResponse);
 
         assertNotNull(customerEntity.getDeletedAt());
@@ -199,7 +199,7 @@ public class CustomerArchiveServiceTest {
         assertEquals(customerEntity.getCreatedAt(), customerResponseResult.createdAt());
 
         verify(customerRepository).findByGuid(guid);
-        verify(customerMapper).customerEntityToCustomerResponse(customerEntity);
+        verify(customerMapper).customerEntityToArchivedCustomerResponse(customerEntity);
 
     }
 

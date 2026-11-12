@@ -17,6 +17,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CustomerValidationTest {
 
@@ -205,7 +206,7 @@ public class CustomerValidationTest {
                 )
         );
 
-        assertEquals(expectedFieldName, exceptionResult.getDetails().get("fieldName"));
+        assertTrue(exceptionResult.getDetails().containsKey(expectedFieldName));
     }
 
     private static Stream<Arguments> notNullableParameters() {

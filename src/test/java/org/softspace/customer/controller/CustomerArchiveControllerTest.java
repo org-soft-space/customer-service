@@ -61,19 +61,19 @@ public class CustomerArchiveControllerTest {
         mockMvc.perform(get(CUSTOMER_ARCHIVE_URL))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.customers").isArray())
-                .andExpect(jsonPath("$.customers.length()").value(1))
-                .andExpect(jsonPath("$.customers[0].guid").value(customerResponse.guid().toString()))
-                .andExpect(jsonPath("$.customers[0].name").value(customerResponse.name()))
-                .andExpect(jsonPath("$.customers[0].surname").value(customerResponse.surname()))
-                .andExpect(jsonPath("$.customers[0].middleName").value(customerResponse.middleName()))
-                .andExpect(jsonPath("$.customers[0].email").value(customerResponse.email()))
-                .andExpect(jsonPath("$.customers[0].phone").value(customerResponse.phone()))
-                .andExpect(jsonPath("$.customers[0].customerType").value(customerResponse.customerType().toString()))
-                .andExpect(jsonPath("$.customers[0].userProfileGuid").value(customerResponse.userProfileGuid().toString()))
-                .andExpect(jsonPath("$.customers[0].responsibleManagerGuid").value(customerResponse.responsibleManagerGuid().toString()))
-                .andExpect(jsonPath("$.customers[0].createdAt").value(customerResponse.createdAt().toString()))
-                .andExpect(jsonPath("$.customers[0].updatedAt").value(customerResponse.updatedAt().toString()));
+                .andExpect(jsonPath("$.archivedCustomers").isArray())
+                .andExpect(jsonPath("$.archivedCustomers.length()").value(1))
+                .andExpect(jsonPath("$.archivedCustomers[0].guid").value(customerResponse.guid().toString()))
+                .andExpect(jsonPath("$.archivedCustomers[0].name").value(customerResponse.name()))
+                .andExpect(jsonPath("$.archivedCustomers[0].surname").value(customerResponse.surname()))
+                .andExpect(jsonPath("$.archivedCustomers[0].middleName").value(customerResponse.middleName()))
+                .andExpect(jsonPath("$.archivedCustomers[0].email").value(customerResponse.email()))
+                .andExpect(jsonPath("$.archivedCustomers[0].phone").value(customerResponse.phone()))
+                .andExpect(jsonPath("$.archivedCustomers[0].customerType").value(customerResponse.customerType().toString()))
+                .andExpect(jsonPath("$.archivedCustomers[0].userProfileGuid").value(customerResponse.userProfileGuid().toString()))
+                .andExpect(jsonPath("$.archivedCustomers[0].responsibleManagerGuid").value(customerResponse.responsibleManagerGuid().toString()))
+                .andExpect(jsonPath("$.archivedCustomers[0].createdAt").value(customerResponse.createdAt().toString()))
+                .andExpect(jsonPath("$.archivedCustomers[0].updatedAt").value(customerResponse.updatedAt().toString()));
 
         verify(customerArchiveService).getAllArchivedCustomers();
     }
