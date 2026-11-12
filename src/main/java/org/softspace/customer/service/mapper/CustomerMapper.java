@@ -5,6 +5,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
+import org.softspace.customer.dto.customer.response.ArchivedCustomerResponse;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
 import org.softspace.customer.entity.CustomerEntity;
 
@@ -30,6 +31,21 @@ public interface CustomerMapper {
     CustomerResponse customerEntityToCustomerResponse(CustomerEntity customerEntity);
 
     @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "guid", source = "customerEntity.guid")
+    @Mapping(target = "name", source = "customerEntity.name")
+    @Mapping(target = "surname", source = "customerEntity.surname")
+    @Mapping(target = "middleName", source = "customerEntity.middleName")
+    @Mapping(target = "email", source = "customerEntity.email")
+    @Mapping(target = "phone", source = "customerEntity.phone")
+    @Mapping(target = "customerType", source = "customerEntity.customerType")
+    @Mapping(target = "userProfileGuid", source = "customerEntity.userProfileGuid")
+    @Mapping(target = "responsibleManagerGuid", source = "customerEntity.responsibleManagerGuid")
+    @Mapping(target = "createdAt", source = "customerEntity.createdAt")
+    @Mapping(target = "updatedAt", source = "customerEntity.updatedAt")
+    @Mapping(target = "deletedAt", source = "customerEntity.deletedAt")
+    ArchivedCustomerResponse customerEntityToArchivedCustomerResponse(CustomerEntity customerEntity);
+
+    @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "guid", source = "customerGuid")
     @Mapping(target = "name", source = "createCustomerRequest.name")
     @Mapping(target = "surname", source = "createCustomerRequest.surname")
@@ -44,6 +60,7 @@ public interface CustomerMapper {
     CustomerEntity createCustomerRequestToCustomerEntity(CreateCustomerRequest createCustomerRequest,
                                                          Instant newTime, UUID customerGuid);
 
-    List<CustomerResponse>  customerEntityListToCustomerResponseList(List<CustomerEntity> customerEntityList);
+    List<CustomerResponse> customerEntityListToCustomerResponseList(List<CustomerEntity> customerEntityList);
 
+    List<ArchivedCustomerResponse> customerEntityListToArchivedCustomerResponseList(List<CustomerEntity> customerEntityList);
 }

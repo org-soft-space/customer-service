@@ -1,6 +1,7 @@
 package org.softspace.customer.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.softspace.customer.config.JacksonConfig;
@@ -44,6 +45,9 @@ public class CustomerControllerTest {
 
     @MockitoBean
     private CustomerService customerService;
+
+    @MockitoBean
+    private Tracer tracer;
 
     private static final String BASE_URL = "/api/v1/customers";
 
