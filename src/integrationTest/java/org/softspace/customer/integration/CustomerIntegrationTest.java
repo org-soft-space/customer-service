@@ -3,6 +3,9 @@ package org.softspace.customer.integration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
 import org.softspace.customer.enums.CustomerType;
 import org.softspace.customer.result.ObjectBuilder;
@@ -23,6 +26,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.ResultSet;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -138,6 +142,122 @@ public class CustomerIntegrationTest {
         assertThat(customerDbResult.createdAt()).isNotNull();
         assertThat(customerDbResult.updatedAt()).isNotNull();
         assertThat(customerDbResult.deletedAt()).isNull();
+    }
+
+    @Sql(
+            scripts = "classpath:sql/customer/truncate.sql",
+            executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD
+    )
+    @Sql(
+            scripts = "classpath:sql/customer/cleanup.sql",
+            executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD
+    )
+    @ParameterizedTest(name = "name={0}, surname={1}, middleName={2}, email={3}, phone={4}, customerType={5}, userProfileGuid={6}, responsibleManagerGuid={7}")
+    @MethodSource("paramsForNewCustomer")
+    void createNewCustomerWithParams(
+            String name,
+            String surname,
+            String middleName,
+            String email,
+            String phone,
+            CustomerType customerType,
+            UUID userProfileGuid,
+            UUID responsibleManagerGuid
+    ) throws Exception {
+        // Given
+        CreateCustomerRequest createCustomerRequest = new CreateCustomerRequest(
+                name,
+                surname,
+                middleName,
+                email,
+                phone,
+                customerType,
+                userProfileGuid,
+                responsibleManagerGuid
+        );
+
+        // Execute and then
+        mockMvc.perform(post(BASE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createCustomerRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.guid").isNotEmpty())
+                .andExpect(jsonPath("$.name").value(createCustomerRequest.name()))
+                .andExpect(jsonPath("$.surname").value(createCustomerRequest.surname()))
+                .andExpect(jsonPath("$.middleName").value(createCustomerRequest.middleName()))
+                .andExpect(jsonPath("$.email").value(createCustomerRequest.email()))
+                .andExpect(jsonPath("$.phone").value(createCustomerRequest.phone()))
+                .andExpect(jsonPath("$.customerType").value(createCustomerRequest.customerType().name()))
+                .andExpect(jsonPath("$.userProfileGuid").value(
+                        createCustomerRequest.userProfileGuid() == null ? null : createCustomerRequest.userProfileGuid().toString()
+                ))
+                .andExpect(jsonPath("$.responsibleManagerGuid").value(
+                        createCustomerRequest.responsibleManagerGuid() == null ? null : createCustomerRequest.responsibleManagerGuid().toString()
+                ));
+
+        CustomerDbResult customerDbResult = jdbcTemplate.queryForObject(
+                "SELECT * FROM customer",
+                (ResultSet rs, int num) -> ObjectBuilder.getCustomerDbResult(rs)
+        );
+
+        Integer countNewCustomers = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM customer",
+                Integer.class
+        );
+
+        assertThat(countNewCustomers).isEqualTo(1);
+
+        assertNotNull(customerDbResult);
+        assertThat(customerDbResult.name()).isEqualTo(createCustomerRequest.name());
+        assertThat(customerDbResult.surname()).isEqualTo(createCustomerRequest.surname());
+        assertThat(customerDbResult.middleName()).isEqualTo(createCustomerRequest.middleName());
+        assertThat(customerDbResult.phone()).isEqualTo(createCustomerRequest.phone());
+        assertThat(customerDbResult.email()).isEqualTo(createCustomerRequest.email());
+        assertThat(customerDbResult.customerType()).isEqualTo(createCustomerRequest.customerType());
+        assertThat(customerDbResult.userProfileGuid()).isEqualTo(createCustomerRequest.userProfileGuid());
+        assertThat(customerDbResult.responsibleManagerGuid()).isEqualTo(createCustomerRequest.responsibleManagerGuid());
+        assertThat(customerDbResult.createdAt()).isNotNull();
+        assertThat(customerDbResult.updatedAt()).isNotNull();
+        assertThat(customerDbResult.deletedAt()).isNull();
+    }
+
+    private static Stream<Arguments> paramsForNewCustomer() {
+        UUID guidOfManager = UUID.randomUUID();
+        String email = "new-user@softspace.org";
+        String phone = "+79991234567";
+        return Stream.of(
+                Arguments.of(
+                        "NAME",
+                        "SURNAME",
+                        "MIDDLE_NAME",
+                        email,
+                        phone,
+                        CustomerType.LEAD,
+                        guidOfManager,
+                        guidOfManager
+                ),
+                Arguments.of(
+                        "NAME",
+                        null,
+                        null,
+                        null,
+                        phone,
+                        CustomerType.CUSTOMER,
+                        null,
+                        null
+                ),
+                Arguments.of(
+                        "NAME",
+                        null,
+                        null,
+                        email,
+                        null,
+                        CustomerType.CUSTOMER,
+                        null,
+                        null
+                )
+        );
     }
 
     // Get
@@ -399,8 +519,122 @@ public class CustomerIntegrationTest {
 
     // ------ NEGATIVE TESTS -------
 
+    // Create
 
+    @Sql(
+            scripts = "classpath:sql/customer/truncate.sql",
+            executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD
+    )
+    @DisplayName("Create new customer without connects. Negative test")
+    @Test
+    void createNewCustomerWithoutConnects() throws Exception {
+        CreateCustomerRequest createCustomerRequest = new CreateCustomerRequest(
+                "NAME",
+                "SURNAME",
+                "MIDDLE_NAME",
+                null,
+                null,
+                CustomerType.LEAD,
+                UUID.randomUUID(),
+                UUID.randomUUID()
+        );
 
+        mockMvc.perform(post(BASE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createCustomerRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Must have one or both field to contact."))
+                .andExpect(jsonPath("$.details.fieldName").value("email or phone"));
+
+        Integer customerCountAfterFind = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM customer",
+                Integer.class
+        );
+
+        assertEquals(0, customerCountAfterFind);
+    }
+
+    @Sql(
+            scripts = "classpath:sql/customer/truncate.sql",
+            executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD
+    )
+    @DisplayName("Create new customer with empty connects. Negative test")
+    @Test
+    void createNewCustomerWithEmptyConnects() throws Exception {
+        CreateCustomerRequest createCustomerRequest = new CreateCustomerRequest(
+                "NAME",
+                "SURNAME",
+                "MIDDLE_NAME",
+                "",
+                "",
+                CustomerType.LEAD,
+                UUID.randomUUID(),
+                UUID.randomUUID()
+        );
+
+        mockMvc.perform(post(BASE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createCustomerRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value("VALIDATION_ERROR"));
+
+        Integer customerCountAfterFind = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM customer",
+                Integer.class
+        );
+
+        assertEquals(0, customerCountAfterFind);
+    }
+
+    @Sql(
+            scripts = "classpath:sql/customer/truncate.sql",
+            executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD
+    )
+    @DisplayName("Create new customer with unknown customer type. Negative test")
+    @Test
+    void createNewCustomerWithUnknownCustomerType() throws Exception {
+        // Given
+        String createCustomerRequest = """
+                {
+                  "name": "%s",
+                  "surname": "%s",
+                  "middleName": "%s",
+                  "email": "%s",
+                  "phone": "%s",
+                  "customerType": "%s",
+                  "userProfileGuid": "%s",
+                  "responsibleManagerGuid": "%s"
+                }
+                """.formatted(
+                "NAME",
+                "SURNAME",
+                "MIDDLE_NAME",
+                "user@softspace.org",
+                "+79997777777",
+                "UnknownCustomerType",
+                UUID.randomUUID(),
+                UUID.randomUUID()
+        );
+
+        // Execute and then
+        mockMvc.perform(post(BASE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createCustomerRequest))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value("FIELD_INVALID"))
+                .andExpect(jsonPath("$.details.fieldName").value("customerType"));
+
+        Integer customerCountAfterFind = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM customer",
+                Integer.class
+        );
+
+        assertEquals(0, customerCountAfterFind);
+    }
 
     // Get
 
