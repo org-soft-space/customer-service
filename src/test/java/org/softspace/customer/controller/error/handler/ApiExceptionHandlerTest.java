@@ -3,11 +3,15 @@ package org.softspace.customer.controller.error.handler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.Mockito;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.softspace.customer.config.JacksonConfig;
 import org.softspace.customer.controller.CustomerController;
@@ -33,6 +37,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -58,6 +63,9 @@ public class ApiExceptionHandlerTest {
 
     @MockitoBean
     private CustomerService customerService;
+
+    @MockitoBean
+    private Tracer tracer;
 
     private static String BASE_URL = "/api/v1/customers";
 
@@ -239,14 +247,23 @@ public class ApiExceptionHandlerTest {
     void shouldGetAllCustomersRuntimeExceptionTest() throws Exception {
 
         // When
-        when(customerService.getAllCustomers()).thenThrow(RuntimeException.class);
+        String errorMessage = "Internal error test";
+        when(customerService.getAllCustomers()).thenThrow(new RuntimeException(errorMessage));
 
         // Execute and expect
-        mockMvc.perform(get(BASE_URL))
+        MvcResult mvcResult = mockMvc.perform(get(BASE_URL))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(ErrorCode.INTERNAL_ERROR.name()))
-                .andExpect(jsonPath("$.path").value(BASE_URL));
+                .andExpect(jsonPath("$.path").value(BASE_URL))
+                .andExpect(jsonPath("$.details").isEmpty())
+                .andExpect(jsonPath("$.stackTrace").doesNotExist())
+                .andExpect(jsonPath("$.exception").doesNotExist())
+                .andReturn();
+
+        String responseBody = mvcResult.getResponse().getContentAsString();
+        assertFalse(responseBody.contains(errorMessage));
+        assertFalse(responseBody.contains("RuntimeException"));
 
         verify(customerService).getAllCustomers();
     }
@@ -359,5 +376,31 @@ public class ApiExceptionHandlerTest {
                 .andReturn();
         assertInstanceOf(MethodArgumentTypeMismatchException.class, mvcResult.getResolvedException());
         verify(customerService, never()).updateCustomer(any(), any());
+    }
+
+    @DisplayName("TraceId. Get customer method throws CustomerNotFoundException with trace ID. Negative test")
+    @Test
+    void shouldGetCustomerNotFoundExceptionWithTraceIdTest() throws Exception {
+        // Given
+        UUID customerGuid = DtoCustomerTestBuilder.GUID;
+        String traceId = "abc";
+        Span span = Mockito.mock(Span.class);
+        TraceContext context = Mockito.mock(TraceContext.class);
+
+        // When
+        when(customerService.getCustomer(customerGuid)).thenThrow(CustomerNotFoundException.class);
+        when(tracer.currentSpan()).thenReturn(span);
+        when(span.context()).thenReturn(context);
+        when(context.traceId()).thenReturn(traceId);
+
+        // Execute and expect
+        mockMvc.perform(get(BASE_URL + "/{guid}", customerGuid))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(ErrorCode.CUSTOMER_NOT_FOUND.name()))
+                .andExpect(jsonPath("$.path").value(BASE_URL + "/" + customerGuid))
+                .andExpect(jsonPath("$.traceId").value(traceId));
+
+        verify(customerService).getCustomer(customerGuid);
     }
 }
