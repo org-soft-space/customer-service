@@ -12,7 +12,7 @@ import java.util.function.Predicate;
 @Component
 public class CustomerValidator {
 
-    public static final String NO_ONE_FIELD_FOR_CONNECTION = "Must have one or both field for connecting.";
+    public static final String NO_ONE_FIELD_FOR_CONNECTION = "Must have one or both field to contact.";
     public static final String NO_ONE_FIELD_IN_OBJECT = "There is no one parameter.";
 
 
