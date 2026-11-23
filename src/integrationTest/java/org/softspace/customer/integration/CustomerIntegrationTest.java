@@ -1,25 +1,36 @@
 package org.softspace.customer.integration;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
+import org.softspace.customer.dto.customer.response.CustomerListResponse;
+import org.softspace.customer.dto.customer.response.CustomerResponse;
+import org.softspace.customer.dto.error.ErrorResponse;
 import org.softspace.customer.enums.CustomerType;
+import org.softspace.customer.exception.error.ErrorCode;
 import org.softspace.customer.result.ObjectBuilder;
 import org.softspace.customer.result.object.CustomerDbResult;
+import org.softspace.customer.service.validation.CustomerValidator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.jdbc.Sql;
-import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -30,25 +41,19 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Testcontainers
 @ActiveProfiles("integration-test")
-@AutoConfigureMockMvc
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class CustomerIntegrationTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private TestRestTemplate testRestTemplate;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -101,20 +106,23 @@ public class CustomerIntegrationTest {
         );
 
         // Execute and then
-        mockMvc.perform(post(BASE_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createCustomerRequest)))
-                .andExpect(status().isCreated())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.guid").isNotEmpty())
-                .andExpect(jsonPath("$.name").value(createCustomerRequest.name()))
-                .andExpect(jsonPath("$.surname").value(createCustomerRequest.surname()))
-                .andExpect(jsonPath("$.middleName").value(createCustomerRequest.middleName()))
-                .andExpect(jsonPath("$.email").value(createCustomerRequest.email()))
-                .andExpect(jsonPath("$.phone").value(createCustomerRequest.phone()))
-                .andExpect(jsonPath("$.customerType").value(createCustomerRequest.customerType().name()))
-                .andExpect(jsonPath("$.userProfileGuid").value(createCustomerRequest.userProfileGuid().toString()))
-                .andExpect(jsonPath("$.responsibleManagerGuid").value(createCustomerRequest.responsibleManagerGuid().toString()));
+        ResponseEntity<CustomerResponse> customerResponse = testRestTemplate.postForEntity(BASE_URL, createCustomerRequest, CustomerResponse.class);
+        CustomerResponse body = customerResponse.getBody();
+        HttpHeaders headers = customerResponse.getHeaders();
+
+        assertEquals(MediaType.APPLICATION_JSON, headers.getContentType());
+        assertThat(customerResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        assertNotNull(body);
+        assertNotNull(body.guid());
+        assertEquals(createCustomerRequest.name(), body.name());
+        assertEquals(createCustomerRequest.surname(), body.surname());
+        assertEquals(createCustomerRequest.middleName(), body.middleName());
+        assertEquals(createCustomerRequest.email(), body.email());
+        assertEquals(createCustomerRequest.phone(), body.phone());
+        assertEquals(createCustomerRequest.customerType(), body.customerType());
+        assertEquals(createCustomerRequest.userProfileGuid(), body.userProfileGuid());
+        assertEquals(createCustomerRequest.responsibleManagerGuid(), body.responsibleManagerGuid());
 
         CustomerDbResult customerDbResult = jdbcTemplate.queryForObject(
                 "SELECT * FROM customer WHERE email = ?",
@@ -177,24 +185,23 @@ public class CustomerIntegrationTest {
         );
 
         // Execute and then
-        mockMvc.perform(post(BASE_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createCustomerRequest)))
-                .andExpect(status().isCreated())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.guid").isNotEmpty())
-                .andExpect(jsonPath("$.name").value(createCustomerRequest.name()))
-                .andExpect(jsonPath("$.surname").value(createCustomerRequest.surname()))
-                .andExpect(jsonPath("$.middleName").value(createCustomerRequest.middleName()))
-                .andExpect(jsonPath("$.email").value(createCustomerRequest.email()))
-                .andExpect(jsonPath("$.phone").value(createCustomerRequest.phone()))
-                .andExpect(jsonPath("$.customerType").value(createCustomerRequest.customerType().name()))
-                .andExpect(jsonPath("$.userProfileGuid").value(
-                        createCustomerRequest.userProfileGuid() == null ? null : createCustomerRequest.userProfileGuid().toString()
-                ))
-                .andExpect(jsonPath("$.responsibleManagerGuid").value(
-                        createCustomerRequest.responsibleManagerGuid() == null ? null : createCustomerRequest.responsibleManagerGuid().toString()
-                ));
+        ResponseEntity<CustomerResponse> response = testRestTemplate.postForEntity(BASE_URL, createCustomerRequest, CustomerResponse.class);
+
+        CustomerResponse body = response.getBody();
+        HttpHeaders headers = response.getHeaders();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(headers.getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
+        assertNotNull(body);
+        assertNotNull(body.guid());
+
+        assertEquals(createCustomerRequest.name(), body.name());
+        assertEquals(createCustomerRequest.surname(), body.surname());
+        assertEquals(createCustomerRequest.middleName(), body.middleName());
+        assertEquals(createCustomerRequest.email(), body.email());
+        assertEquals(createCustomerRequest.phone(), body.phone());
+        assertEquals(createCustomerRequest.customerType(), body.customerType());
+        assertEquals(createCustomerRequest.userProfileGuid(), body.userProfileGuid());
 
         CustomerDbResult customerDbResult = jdbcTemplate.queryForObject(
                 "SELECT * FROM customer",
@@ -278,11 +285,17 @@ public class CustomerIntegrationTest {
     @Test
     void findCustomer() throws Exception {
         // Execute and then
-        mockMvc.perform(get(BASE_URL + "/{guid}", CUSTOMER_GUID))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("id").doesNotExist())
-                .andExpect(jsonPath("guid").value(CUSTOMER_GUID.toString()));
+        ResponseEntity<CustomerResponse> response = testRestTemplate.getForEntity(BASE_URL + "/{guid}", CustomerResponse.class, CUSTOMER_GUID);
+        HttpHeaders headers = response.getHeaders();
+        CustomerResponse body = response.getBody();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(headers.getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
+        assertNotNull(body);
+        assertNotNull(body.guid());
+        assertThat(body.guid()).isEqualTo(CUSTOMER_GUID);
+
+//                .andExpect(jsonPath("id").doesNotExist())
     }
 
     // Get all
@@ -303,14 +316,19 @@ public class CustomerIntegrationTest {
     @Test
     void findAllCustomers() throws Exception {
         // Execute and then
-        mockMvc.perform(get(BASE_URL))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.customers").isArray())
-                .andExpect(jsonPath("$.customers").isNotEmpty())
-                .andExpect(jsonPath("$.customers.length()").value(1))
-                .andExpect(jsonPath("$.customers[0].id").doesNotExist())
-                .andExpect(jsonPath("$.customers[0].guid").value(CUSTOMER_GUID.toString()));
+        ResponseEntity<CustomerListResponse> response = testRestTemplate.getForEntity(BASE_URL, CustomerListResponse.class);
+        HttpHeaders headers = response.getHeaders();
+        CustomerListResponse body = response.getBody();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(headers.getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
+        assertNotNull(body);
+        assertNotNull(body.customers());
+        assertFalse(body.customers().isEmpty());
+        assertThat(body.customers().size()).isEqualTo(1);
+        assertThat(body.customers().getFirst().guid()).isEqualTo(CUSTOMER_GUID);
+
+//                .andExpect(jsonPath("$.customers[0].id").doesNotExist())
     }
 
     @Sql(
@@ -326,11 +344,15 @@ public class CustomerIntegrationTest {
                 Integer.class
         );
 
-        mockMvc.perform(get(BASE_URL))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.customers").isArray())
-                .andExpect(jsonPath("$.customers").isEmpty());
+        ResponseEntity<CustomerListResponse> response = testRestTemplate.getForEntity(BASE_URL, CustomerListResponse.class);
+        HttpHeaders headers = response.getHeaders();
+        CustomerListResponse body = response.getBody();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(headers.getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
+        assertNotNull(body);
+        assertNotNull(body.customers());
+        assertTrue(body.customers().isEmpty());
 
         assertEquals(0, customerCountAfterDeleteRequest);
     }
@@ -359,6 +381,7 @@ public class CustomerIntegrationTest {
         String updatedEmail = "updated-user@softspace.org";
         String updatedPhone = "+79997777777";
         CustomerType updatedCustomerType = CustomerType.CUSTOMER;
+        UUID updatedGuidOfUserProfile = UUID.randomUUID();
         UUID updatedGuidOfManager = UUID.randomUUID();
 
         String updateCustomerRequest = """
@@ -379,7 +402,7 @@ public class CustomerIntegrationTest {
                 updatedEmail,
                 updatedPhone,
                 updatedCustomerType,
-                updatedGuidOfManager,
+                updatedGuidOfUserProfile,
                 updatedGuidOfManager
         );
 
@@ -391,20 +414,37 @@ public class CustomerIntegrationTest {
         );
 
         // Execute and then
-        mockMvc.perform(patch(BASE_URL + "/{guid}", CUSTOMER_GUID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateCustomerRequest))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.guid").value(CUSTOMER_GUID.toString()))
-                .andExpect(jsonPath("$.name").value(updatedName))
-                .andExpect(jsonPath("$.surname").value(updatedSurname))
-                .andExpect(jsonPath("$.middleName").value(updatedMiddleName))
-                .andExpect(jsonPath("$.email").value(updatedEmail))
-                .andExpect(jsonPath("$.phone").value(updatedPhone))
-                .andExpect(jsonPath("$.customerType").value(updatedCustomerType.name()))
-                .andExpect(jsonPath("$.userProfileGuid").value(updatedGuidOfManager.toString()))
-                .andExpect(jsonPath("$.responsibleManagerGuid").value(updatedGuidOfManager.toString()));
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseEntity<CustomerResponse> response = testRestTemplate.exchange(
+                BASE_URL + "/{guid}",
+                HttpMethod.PATCH,
+                new HttpEntity<>(updateCustomerRequest, httpHeaders),
+                CustomerResponse.class,
+                CUSTOMER_GUID
+        );
+        CustomerResponse body = response.getBody();
+        HttpHeaders headers = response.getHeaders();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertNotNull(headers.getContentType());
+        assertTrue(headers.getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
+        assertNotNull(body);
+        assertThat(body.guid()).isEqualTo(CUSTOMER_GUID);
+        assertThat(body.name()).isEqualTo(updatedName);
+        assertThat(body.surname()).isEqualTo(updatedSurname);
+        assertThat(body.middleName()).isEqualTo(updatedMiddleName);
+        assertThat(body.email()).isEqualTo(updatedEmail);
+        assertThat(body.phone()).isEqualTo(updatedPhone);
+        assertThat(body.customerType()).isEqualTo(updatedCustomerType);
+        assertThat(body.userProfileGuid()).isEqualTo(updatedGuidOfUserProfile);
+        assertThat(body.responsibleManagerGuid()).isEqualTo(updatedGuidOfManager);
+
+
+        // TODO: JSONAssert.assertEquals() -- для тестирования с JSON файлами.
+        // TODO: если надо получить ответ до десериализации в объект, то можно воспользоваться JsonNode.class.
+        //  String expectedJson = new ClassPathResource("responses/example.json").getContentAsString(StandardCharsets.UTF_8);
 
 
         // Customer after update
@@ -436,8 +476,135 @@ public class CustomerIntegrationTest {
         assertEquals(updatedEmail, customerDbResultAfterUpdate.email());
         assertEquals(updatedPhone, customerDbResultAfterUpdate.phone());
         assertEquals(updatedCustomerType, customerDbResultAfterUpdate.customerType());
-        assertEquals(updatedGuidOfManager, customerDbResultAfterUpdate.userProfileGuid());
+        assertEquals(updatedGuidOfUserProfile, customerDbResultAfterUpdate.userProfileGuid());
         assertEquals(updatedGuidOfManager, customerDbResultAfterUpdate.responsibleManagerGuid());
+    }
+
+    @Sql(
+            scripts = "classpath:sql/customer/truncate.sql",
+            executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD
+    )
+    @Sql(
+            scripts = "classpath:sql/customer/insert.sql",
+            executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD
+    )
+    @Sql(
+            scripts = "classpath:sql/customer/cleanup.sql",
+            executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD
+    )
+    @ParameterizedTest(name = "fieldName={0}, value={1}")
+    @MethodSource("parametersForUpdate")
+    void updateEachFieldOfCustomerWithParams(
+            String fieldName,
+            Object value
+    ) throws Exception {
+
+        String email = "new-user@softspace.org";
+        CreateCustomerRequest createCustomerRequest = new CreateCustomerRequest(
+                "NAME",
+                "SURNAME",
+                "MIDDLE_NAME",
+                email,
+                "+79991234567",
+                CustomerType.LEAD,
+                UUID.randomUUID(),
+                UUID.randomUUID()
+        );
+
+        // Customer before update
+        CustomerDbResult customerDbResultBeforeUpdate = jdbcTemplate.queryForObject(
+                "SELECT * FROM customer WHERE guid = ?",
+                (ResultSet rs, int num) -> ObjectBuilder.getCustomerDbResult(rs),
+                CUSTOMER_GUID
+        );
+
+        ObjectNode expectedCustomerTree = objectMapper.<ObjectNode>valueToTree(customerDbResultBeforeUpdate);
+        JsonNode valueNode = objectMapper.valueToTree(value);
+
+        // Fields are difference.
+        assertThat(expectedCustomerTree.path(fieldName).asText()).isNotEqualTo(valueNode.toString());
+
+        // Change a field.
+        expectedCustomerTree.set(fieldName, valueNode.deepCopy());
+
+        ObjectNode request = objectMapper.createObjectNode();
+        request.set(fieldName, valueNode);
+
+        // Execute and then
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseEntity<CustomerResponse> response = testRestTemplate.exchange(
+                BASE_URL + "/{guid}",
+                HttpMethod.PATCH,
+                new HttpEntity<>(request, httpHeaders),
+                CustomerResponse.class,
+                CUSTOMER_GUID
+        );
+        CustomerResponse body = response.getBody();
+        HttpHeaders headers = response.getHeaders();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertNotNull(headers.getContentType());
+        assertTrue(headers.getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
+        assertNotNull(body);
+        assertThat(body.guid()).isEqualTo(CUSTOMER_GUID);
+
+        // Customer after update
+        CustomerDbResult customerDbResultAfterUpdate = jdbcTemplate.queryForObject(
+                "SELECT * FROM customer WHERE guid = ?",
+                (ResultSet rs, int num) -> ObjectBuilder.getCustomerDbResult(rs),
+                CUSTOMER_GUID
+        );
+
+        // Prepare JSON objects.
+        ObjectNode responseBodyTree = objectMapper.<ObjectNode>valueToTree(body);
+        ObjectNode actualCustomerTree = objectMapper.<ObjectNode>valueToTree(customerDbResultAfterUpdate);
+
+        expectedCustomerTree.remove("updatedAt");
+        expectedCustomerTree.remove("deletedAt");
+        actualCustomerTree.remove("deletedAt");
+        responseBodyTree.remove("updatedAt");
+        actualCustomerTree.remove("updatedAt");
+
+        assertThat(responseBodyTree).isEqualTo(actualCustomerTree);
+        assertThat(expectedCustomerTree).isEqualTo(actualCustomerTree);
+
+        // Assert updated value.
+        assertThat(actualCustomerTree.path(fieldName)).isEqualTo(valueNode);
+
+        // Customer exists before and after update.
+        assertNotNull(customerDbResultBeforeUpdate);
+        assertNotNull(customerDbResultAfterUpdate);
+
+        // deletedAt field is empty.
+        assertNull(customerDbResultBeforeUpdate.deletedAt());
+        assertNull(customerDbResultAfterUpdate.deletedAt());
+
+        // Unmodified createdAt fields and deference updatedAt fields.
+        assertNotEquals(customerDbResultBeforeUpdate.updatedAt(), customerDbResultAfterUpdate.updatedAt());
+        assertEquals(customerDbResultBeforeUpdate.createdAt(), customerDbResultAfterUpdate.createdAt());
+    }
+
+    private static Stream<Arguments> parametersForUpdate() {
+        String updatedEmail = "updated-user@softspace.org";
+        String updatedPhone = "+79997777777";
+        return Stream.of(
+                Arguments.of("name", "Updated name"),
+                Arguments.of("surname", "Updated surname"),
+                Arguments.of("middleName", "Updated middleName"),
+                Arguments.of("email", updatedEmail),
+                Arguments.of("phone", updatedPhone),
+                Arguments.of("customerType", CustomerType.CUSTOMER.name()),
+                Arguments.of("userProfileGuid", UUID.randomUUID().toString()),
+                Arguments.of("responsibleManagerGuid", UUID.randomUUID().toString()),
+                Arguments.of("surname", null),
+                Arguments.of("middleName", null),
+                Arguments.of("email", null),
+                Arguments.of("phone", null),
+                Arguments.of("userProfileGuid", null),
+                Arguments.of("responsibleManagerGuid", null)
+        );
     }
 
     // Delete
@@ -463,9 +630,15 @@ public class CustomerIntegrationTest {
                 CUSTOMER_GUID
         );
 
-        mockMvc.perform(delete(BASE_URL + "/{guid}", CUSTOMER_GUID))
-                .andExpect(status().isNoContent())
-                .andExpect(content().string(""));
+        ResponseEntity<Void> responseEntity = testRestTemplate.exchange(
+                BASE_URL + "/{guid}",
+                HttpMethod.DELETE,
+                HttpEntity.EMPTY,
+                Void.class,
+                CUSTOMER_GUID
+        );
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertNull(responseEntity.getBody());
 
         CustomerDbResult customerDbResulAfterDelete = jdbcTemplate.queryForObject(
                 "SELECT * FROM customer WHERE GUID = ?",
@@ -497,9 +670,7 @@ public class CustomerIntegrationTest {
     @Test
     void getCustomerListWithoutSoftDeletedCustomer() throws Exception {
 
-        mockMvc.perform(delete(BASE_URL + "/{guid}", CUSTOMER_GUID))
-                .andExpect(status().isNoContent())
-                .andExpect(content().string(""));
+        testRestTemplate.delete(BASE_URL + "/{guid}", CUSTOMER_GUID);
 
         Integer customerCountAfterDeleteRequest = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM customer WHERE guid = ?",
@@ -507,11 +678,16 @@ public class CustomerIntegrationTest {
                 CUSTOMER_GUID
         );
 
-        mockMvc.perform(get(BASE_URL))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.customers").isArray())
-                .andExpect(jsonPath("$.customers").isEmpty());
+        ResponseEntity<CustomerListResponse> response = testRestTemplate.getForEntity(BASE_URL, CustomerListResponse.class);
+        CustomerListResponse body = response.getBody();
+        HttpHeaders headers = response.getHeaders();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertNotNull(headers.getContentType());
+        assertTrue(headers.getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
+        assertNotNull(body);
+        assertNotNull(body.customers());
+        assertTrue(body.customers().isEmpty());
 
         assertEquals(1, customerCountAfterDeleteRequest);
     }
@@ -539,14 +715,18 @@ public class CustomerIntegrationTest {
                 UUID.randomUUID()
         );
 
-        mockMvc.perform(post(BASE_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createCustomerRequest)))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.message").value("Must have one or both field to contact."))
-                .andExpect(jsonPath("$.details.fieldName").value("email or phone"));
+        ResponseEntity<ErrorResponse> response = testRestTemplate.postForEntity(BASE_URL, createCustomerRequest, ErrorResponse.class);
+        ErrorResponse body = response.getBody();
+        HttpHeaders headers = response.getHeaders();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertNotNull(headers.getContentType());
+        assertTrue(headers.getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
+        assertNotNull(body);
+
+        assertThat(body.status()).isEqualTo(ErrorCode.VALIDATION_ERROR.name());
+        assertThat(body.message()).isEqualTo("Must have one or both field to contact.");
+        assertThat(body.details().get("fieldName")).isEqualTo("email or phone");
 
         Integer customerCountAfterFind = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM customer",
@@ -574,12 +754,16 @@ public class CustomerIntegrationTest {
                 UUID.randomUUID()
         );
 
-        mockMvc.perform(post(BASE_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createCustomerRequest)))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status").value("VALIDATION_ERROR"));
+        ResponseEntity<ErrorResponse> response = testRestTemplate.postForEntity(BASE_URL, createCustomerRequest, ErrorResponse.class);
+        ErrorResponse body = response.getBody();
+        HttpHeaders headers = response.getHeaders();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertNotNull(headers.getContentType());
+        assertTrue(headers.getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
+        assertNotNull(body);
+
+        assertThat(body.status()).isEqualTo(ErrorCode.VALIDATION_ERROR.name());
 
         Integer customerCountAfterFind = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM customer",
@@ -620,13 +804,24 @@ public class CustomerIntegrationTest {
         );
 
         // Execute and then
-        mockMvc.perform(post(BASE_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createCustomerRequest))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status").value("FIELD_INVALID"))
-                .andExpect(jsonPath("$.details.fieldName").value("customerType"));
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseEntity<ErrorResponse> response = testRestTemplate.postForEntity(
+                BASE_URL,
+                new HttpEntity<>(createCustomerRequest, httpHeaders),
+                ErrorResponse.class
+        );
+        ErrorResponse body = response.getBody();
+        HttpHeaders headers = response.getHeaders();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertNotNull(headers.getContentType());
+        assertTrue(headers.getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
+        assertNotNull(body);
+
+        assertThat(body.status()).isEqualTo(ErrorCode.FIELD_INVALID.name());
+        assertThat(body.details().get("fieldName")).isEqualTo("customerType");
 
         Integer customerCountAfterFind = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM customer",
@@ -646,10 +841,16 @@ public class CustomerIntegrationTest {
     @Test
     void getNonExistentCustomer() throws Exception {
 
-        mockMvc.perform(get(BASE_URL + "/{guid}", CUSTOMER_GUID))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("status").value("CUSTOMER_NOT_FOUND"));
+        ResponseEntity<ErrorResponse> response = testRestTemplate.getForEntity(BASE_URL + "/{guid}", ErrorResponse.class, CUSTOMER_GUID);
+        ErrorResponse body = response.getBody();
+        HttpHeaders headers = response.getHeaders();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertNotNull(headers.getContentType());
+        assertTrue(headers.getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
+        assertNotNull(body);
+
+        assertThat(body.status()).isEqualTo(ErrorCode.CUSTOMER_NOT_FOUND.name());
 
         Integer customerCountAfterFind = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM customer",
@@ -659,6 +860,92 @@ public class CustomerIntegrationTest {
         assertEquals(0, customerCountAfterFind);
     }
 
+    // Update
+
+    @Sql(
+            scripts = "classpath:sql/customer/truncate.sql",
+            executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD
+    )
+    @Sql(
+            scripts = "classpath:sql/customer/cleanup.sql",
+            executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD
+    )
+    @ParameterizedTest(name = "fieldNameToCreate={0}, valueToCreate={1}, fieldNameToUpdate={2}, valueToUpdate={3}")
+    @MethodSource("parametersForContactsUpdate")
+    void updateContactFieldsOfCustomerWithParams(
+            Object emailToCreate,
+            Object emailToUpdate,
+            Object phoneToCreate,
+            Object phoneToUpdate
+    ) throws Exception {
+
+        ObjectNode createCustomerRequest = objectMapper.createObjectNode();
+        createCustomerRequest.put("name", "Name");
+        createCustomerRequest.set("customerType", objectMapper.valueToTree(CustomerType.LEAD));
+        createCustomerRequest.set("email", objectMapper.valueToTree(emailToCreate));
+        createCustomerRequest.set("phone", objectMapper.valueToTree(phoneToCreate));
+
+        // Execute and then
+        ResponseEntity<CustomerResponse> customerResponse = testRestTemplate.postForEntity(
+                BASE_URL,
+                createCustomerRequest,
+                CustomerResponse.class
+        );
+
+        assertThat(customerResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        UUID customerGuid = customerResponse.getBody().guid();
+
+
+        // Customer before update
+        Integer customerCountBeforeUpdate = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM customer",
+                Integer.class
+        );
+
+        ObjectNode request = objectMapper.createObjectNode();
+        request.set("email", objectMapper.valueToTree(emailToUpdate));
+        request.set("phone", objectMapper.valueToTree(phoneToUpdate));
+
+        // Execute and then
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseEntity<ErrorResponse> response = testRestTemplate.exchange(
+                BASE_URL + "/{guid}",
+                HttpMethod.PATCH,
+                new HttpEntity<>(request, httpHeaders),
+                ErrorResponse.class,
+                customerGuid
+        );
+        ErrorResponse body = response.getBody();
+        HttpHeaders headers = response.getHeaders();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertNotNull(headers.getContentType());
+        assertTrue(headers.getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
+        assertNotNull(body);
+        assertThat(body.message()).isEqualTo(CustomerValidator.NO_ONE_FIELD_FOR_CONNECTION);
+        assertThat(body.status()).isEqualTo("VALIDATION_ERROR");
+
+        // Customer after update
+        Integer customerCountAfterUpdate = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM customer",
+                Integer.class
+        );
+
+        assertThat(customerCountBeforeUpdate).isEqualTo(1);
+        assertThat(customerCountAfterUpdate).isEqualTo(1);
+    }
+
+    private static Stream<Arguments> parametersForContactsUpdate() {
+        String updatedEmail = "updated-user@softspace.org";
+        String updatedPhone = "+79997777777";
+        return Stream.of(
+                Arguments.of("user@softspace.org", "", null, null),
+                Arguments.of("user@softspace.org", null, null, null),
+                Arguments.of(null, null, "+79997777777", null)
+        );
+    }
 
     // Delete
 
@@ -682,15 +969,32 @@ public class CustomerIntegrationTest {
                 (ResultSet rs, int num) -> ObjectBuilder.getCustomerDbResult(rs),
                 CUSTOMER_GUID
         );
+        ResponseEntity<Void> firstDeletedResponse = testRestTemplate.exchange(
+                BASE_URL + "/{guid}",
+                HttpMethod.DELETE,
+                HttpEntity.EMPTY,
+                Void.class,
+                CUSTOMER_GUID
+        );
+        assertThat(firstDeletedResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertNull(firstDeletedResponse.getBody());
 
-        mockMvc.perform(delete(BASE_URL + "/{guid}", CUSTOMER_GUID))
-                .andExpect(status().isNoContent())
-                .andExpect(content().string(""));
+        ResponseEntity<ErrorResponse> response = testRestTemplate.exchange(
+                BASE_URL + "/{guid}",
+                HttpMethod.DELETE,
+                HttpEntity.EMPTY,
+                ErrorResponse.class,
+                CUSTOMER_GUID
+        );
+        ErrorResponse body = response.getBody();
+        HttpHeaders headers = response.getHeaders();
 
-        mockMvc.perform(delete(BASE_URL + "/{guid}", CUSTOMER_GUID))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("status").value("CUSTOMER_NOT_FOUND"));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertNotNull(headers.getContentType());
+        assertTrue(headers.getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
+        assertNotNull(body);
+
+        assertThat(body.status()).isEqualTo(ErrorCode.CUSTOMER_NOT_FOUND.name());
 
         CustomerDbResult customerDbResulAfterDelete = jdbcTemplate.queryForObject(
                 "SELECT * FROM customer WHERE GUID = ?",
@@ -719,10 +1023,22 @@ public class CustomerIntegrationTest {
                 CUSTOMER_GUID
         );
 
-        mockMvc.perform(delete(BASE_URL + "/{guid}", CUSTOMER_GUID))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("status").value("CUSTOMER_NOT_FOUND"));
+        ResponseEntity<ErrorResponse> response = testRestTemplate.exchange(
+                BASE_URL + "/{guid}",
+                HttpMethod.DELETE,
+                HttpEntity.EMPTY,
+                ErrorResponse.class,
+                CUSTOMER_GUID
+        );
+        ErrorResponse body = response.getBody();
+        HttpHeaders headers = response.getHeaders();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertNotNull(headers.getContentType());
+        assertTrue(headers.getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
+        assertNotNull(body);
+
+        assertThat(body.status()).isEqualTo(ErrorCode.CUSTOMER_NOT_FOUND.name());
 
         Integer customerCountAfterDeleteRequest = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM customer WHERE guid = ?",
@@ -750,9 +1066,14 @@ public class CustomerIntegrationTest {
     @Test
     void getSoftDeletedCustomer() throws Exception {
 
-        mockMvc.perform(delete(BASE_URL + "/{guid}", CUSTOMER_GUID))
-                .andExpect(status().isNoContent())
-                .andExpect(content().string(""));
+        ResponseEntity<Void> responseEntity = testRestTemplate.exchange(
+                BASE_URL + "/{guid}",
+                HttpMethod.DELETE,
+                HttpEntity.EMPTY,
+                Void.class,
+                CUSTOMER_GUID
+        );
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
         Integer customerCountAfterDeleteRequest = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM customer WHERE guid = ?",
@@ -760,10 +1081,17 @@ public class CustomerIntegrationTest {
                 CUSTOMER_GUID
         );
 
-        mockMvc.perform(get(BASE_URL + "/{guid}", CUSTOMER_GUID))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("status").value("CUSTOMER_NOT_FOUND"));
+        ResponseEntity<ErrorResponse> response = testRestTemplate.getForEntity(BASE_URL + "/{guid}", ErrorResponse.class, CUSTOMER_GUID);
+
+        ErrorResponse body = response.getBody();
+        HttpHeaders headers = response.getHeaders();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertNotNull(headers.getContentType());
+        assertTrue(headers.getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
+        assertNotNull(body);
+
+        assertThat(body.status()).isEqualTo(ErrorCode.CUSTOMER_NOT_FOUND.name());
 
         assertEquals(1, customerCountAfterDeleteRequest);
     }
@@ -794,26 +1122,33 @@ public class CustomerIntegrationTest {
         );
 
         // Create new customer.
-        mockMvc.perform(post(BASE_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createCustomerRequest)))
-                .andExpect(status().isCreated())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.guid").isNotEmpty());
+        ResponseEntity<CustomerResponse> createdCustomerResponse = testRestTemplate.postForEntity(BASE_URL, createCustomerRequest, CustomerResponse.class);
+        CustomerResponse body = createdCustomerResponse.getBody();
+        HttpHeaders headers = createdCustomerResponse.getHeaders();
 
+        assertEquals(MediaType.APPLICATION_JSON, headers.getContentType());
+        assertThat(createdCustomerResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertNotNull(body);
+        assertNotNull(body.guid());
 
-        // Customer before update
-        CustomerDbResult customerDbResultBeforeSoftDeleteAndUpdate = jdbcTemplate.queryForObject(
-                "SELECT * FROM customer WHERE email = ?",
-                (ResultSet rs, int num) -> ObjectBuilder.getCustomerDbResult(rs),
-                email
-        );
-        UUID customerGuid = customerDbResultBeforeSoftDeleteAndUpdate.guid();
+        UUID customerGuid = body.guid();
 
         // Delete customer request.
-        mockMvc.perform(delete(BASE_URL + "/{guid}", customerGuid))
-                .andExpect(status().isNoContent())
-                .andExpect(content().string(""));
+        ResponseEntity<Void> responseEntity = testRestTemplate.exchange(
+                BASE_URL + "/{guid}",
+                HttpMethod.DELETE,
+                HttpEntity.EMPTY,
+                Void.class,
+                customerGuid
+        );
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        // Customer before update
+        CustomerDbResult customerDbResultBeforeUpdate = jdbcTemplate.queryForObject(
+                "SELECT * FROM customer WHERE guid = ?",
+                (ResultSet rs, int num) -> ObjectBuilder.getCustomerDbResult(rs),
+                customerGuid
+        );
 
         // Update customer request.
         String updatedName = "UPDATED NAME";
@@ -847,13 +1182,24 @@ public class CustomerIntegrationTest {
         );
 
         // Update deleted customer
-        mockMvc.perform(patch(BASE_URL + "/{guid}", customerGuid)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateCustomerRequest))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("status").value("CUSTOMER_NOT_FOUND"));
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
 
+        ResponseEntity<ErrorResponse> response = testRestTemplate.exchange(
+                BASE_URL + "/{guid}",
+                HttpMethod.PATCH,
+                new HttpEntity<>(updateCustomerRequest, httpHeaders),
+                ErrorResponse.class,
+                customerGuid
+        );
+        ErrorResponse errorBody = response.getBody();
+        HttpHeaders errorHeaders = response.getHeaders();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertNotNull(errorHeaders.getContentType());
+        assertTrue(errorHeaders.getContentType().isCompatibleWith(MediaType.APPLICATION_JSON));
+        assertNotNull(errorBody);
+        assertThat(errorBody.status()).isEqualTo(ErrorCode.CUSTOMER_NOT_FOUND.name());
 
         // --- Then ---
 
@@ -871,20 +1217,20 @@ public class CustomerIntegrationTest {
 
         assertThat(countNewCustomers).isEqualTo(1);
 
-        assertNotNull(customerDbResultBeforeSoftDeleteAndUpdate);
+        assertNotNull(customerDbResultBeforeUpdate);
         assertNotNull(customerDbResultAfterSoftDeleteAndUpdate);
-        assertThat(customerDbResultBeforeSoftDeleteAndUpdate.guid()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.guid());
-        assertThat(customerDbResultBeforeSoftDeleteAndUpdate.name()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.name());
-        assertThat(customerDbResultBeforeSoftDeleteAndUpdate.surname()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.surname());
-        assertThat(customerDbResultBeforeSoftDeleteAndUpdate.middleName()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.middleName());
-        assertThat(customerDbResultBeforeSoftDeleteAndUpdate.phone()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.phone());
-        assertThat(customerDbResultBeforeSoftDeleteAndUpdate.email()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.email());
-        assertThat(customerDbResultBeforeSoftDeleteAndUpdate.customerType()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.customerType());
-        assertThat(customerDbResultBeforeSoftDeleteAndUpdate.userProfileGuid()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.userProfileGuid());
-        assertThat(customerDbResultBeforeSoftDeleteAndUpdate.responsibleManagerGuid()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.responsibleManagerGuid());
-        assertThat(customerDbResultBeforeSoftDeleteAndUpdate.createdAt()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.createdAt());
-        assertThat(customerDbResultBeforeSoftDeleteAndUpdate.updatedAt()).isNotEqualTo(customerDbResultAfterSoftDeleteAndUpdate.updatedAt());
-        assertThat(customerDbResultBeforeSoftDeleteAndUpdate.deletedAt()).isNull();
+        assertThat(customerDbResultBeforeUpdate.guid()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.guid());
+        assertThat(customerDbResultBeforeUpdate.name()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.name());
+        assertThat(customerDbResultBeforeUpdate.surname()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.surname());
+        assertThat(customerDbResultBeforeUpdate.middleName()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.middleName());
+        assertThat(customerDbResultBeforeUpdate.phone()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.phone());
+        assertThat(customerDbResultBeforeUpdate.email()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.email());
+        assertThat(customerDbResultBeforeUpdate.customerType()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.customerType());
+        assertThat(customerDbResultBeforeUpdate.userProfileGuid()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.userProfileGuid());
+        assertThat(customerDbResultBeforeUpdate.responsibleManagerGuid()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.responsibleManagerGuid());
+        assertThat(customerDbResultBeforeUpdate.createdAt()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.createdAt());
+        assertThat(customerDbResultBeforeUpdate.updatedAt()).isEqualTo(customerDbResultAfterSoftDeleteAndUpdate.updatedAt());
+        assertThat(customerDbResultBeforeUpdate.deletedAt()).isNotNull();
         assertThat(customerDbResultAfterSoftDeleteAndUpdate.deletedAt()).isNotNull();
     }
 }
