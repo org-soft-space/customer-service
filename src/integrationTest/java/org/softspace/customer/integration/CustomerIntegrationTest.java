@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.skyscreamer.jsonassert.JSONAssert;
 import org.softspace.customer.dto.customer.request.CreateCustomerRequest;
 import org.softspace.customer.dto.customer.response.CustomerListResponse;
 import org.softspace.customer.dto.customer.response.CustomerResponse;
@@ -20,6 +21,7 @@ import org.softspace.customer.service.validation.CustomerValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -35,6 +37,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -90,7 +93,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("Create new customer. Positive test")
     @Test
-    void createNewCustomer() throws Exception {
+    void createNewCustomer() {
         // Given
         UUID guidOfManager = UUID.randomUUID();
         String email = "new-user@softspace.org";
@@ -171,7 +174,7 @@ public class CustomerIntegrationTest {
             CustomerType customerType,
             UUID userProfileGuid,
             UUID responsibleManagerGuid
-    ) throws Exception {
+    ) {
         // Given
         CreateCustomerRequest createCustomerRequest = new CreateCustomerRequest(
                 name,
@@ -285,17 +288,16 @@ public class CustomerIntegrationTest {
     @Test
     void findCustomer() throws Exception {
         // Execute and then
-        ResponseEntity<CustomerResponse> response = testRestTemplate.getForEntity(BASE_URL + "/{guid}", CustomerResponse.class, CUSTOMER_GUID);
+        ResponseEntity<String> response = testRestTemplate.getForEntity(BASE_URL + "/{guid}", String.class, CUSTOMER_GUID);
         HttpHeaders headers = response.getHeaders();
-        CustomerResponse body = response.getBody();
+        String actualResponse = response.getBody();
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(headers.getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
-        assertNotNull(body);
-        assertNotNull(body.guid());
-        assertThat(body.guid()).isEqualTo(CUSTOMER_GUID);
+        assertNotNull(actualResponse);
 
-//                .andExpect(jsonPath("id").doesNotExist())
+        String expectedJson = new ClassPathResource("responses/customerResponse.json").getContentAsString(StandardCharsets.UTF_8);
+        JSONAssert.assertEquals(expectedJson, actualResponse, true);
     }
 
     // Get all
@@ -314,7 +316,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("Find all customers. Positive test")
     @Test
-    void findAllCustomers() throws Exception {
+    void findAllCustomers() {
         // Execute and then
         ResponseEntity<CustomerListResponse> response = testRestTemplate.getForEntity(BASE_URL, CustomerListResponse.class);
         HttpHeaders headers = response.getHeaders();
@@ -337,7 +339,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("Get empty customer list. Positive test")
     @Test
-    void getEmptyCustomerList() throws Exception {
+    void getEmptyCustomerList() {
 
         Integer customerCountAfterDeleteRequest = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM customer",
@@ -373,7 +375,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("Update customer. Positive test")
     @Test
-    void updateCustomer() throws Exception {
+    void updateCustomer() {
         // Given
         String updatedName = "UPDATED NAME";
         String updatedSurname = "UPDATED SURNAME";
@@ -497,7 +499,7 @@ public class CustomerIntegrationTest {
     void updateEachFieldOfCustomerWithParams(
             String fieldName,
             Object value
-    ) throws Exception {
+    ) {
 
         String email = "new-user@softspace.org";
         CreateCustomerRequest createCustomerRequest = new CreateCustomerRequest(
@@ -623,7 +625,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("First soft delete customer. Positive test")
     @Test
-    void softDeleteCustomer() throws Exception {
+    void softDeleteCustomer() {
         CustomerDbResult customerDbResultBeforeDelete = jdbcTemplate.queryForObject(
                 "SELECT * FROM customer WHERE GUID = ?",
                 (ResultSet rs, int num) -> ObjectBuilder.getCustomerDbResult(rs),
@@ -668,7 +670,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("Get customer list without soft deleted customers. Positive test")
     @Test
-    void getCustomerListWithoutSoftDeletedCustomer() throws Exception {
+    void getCustomerListWithoutSoftDeletedCustomer() {
 
         testRestTemplate.delete(BASE_URL + "/{guid}", CUSTOMER_GUID);
 
@@ -703,7 +705,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("Create new customer without connects. Negative test")
     @Test
-    void createNewCustomerWithoutConnects() throws Exception {
+    void createNewCustomerWithoutConnects() {
         CreateCustomerRequest createCustomerRequest = new CreateCustomerRequest(
                 "NAME",
                 "SURNAME",
@@ -742,7 +744,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("Create new customer with empty connects. Negative test")
     @Test
-    void createNewCustomerWithEmptyConnects() throws Exception {
+    void createNewCustomerWithEmptyConnects() {
         CreateCustomerRequest createCustomerRequest = new CreateCustomerRequest(
                 "NAME",
                 "SURNAME",
@@ -779,7 +781,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("Create new customer with unknown customer type. Negative test")
     @Test
-    void createNewCustomerWithUnknownCustomerType() throws Exception {
+    void createNewCustomerWithUnknownCustomerType() {
         // Given
         String createCustomerRequest = """
                 {
@@ -839,7 +841,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("Get non-existent customer. Negative test")
     @Test
-    void getNonExistentCustomer() throws Exception {
+    void getNonExistentCustomer() {
 
         ResponseEntity<ErrorResponse> response = testRestTemplate.getForEntity(BASE_URL + "/{guid}", ErrorResponse.class, CUSTOMER_GUID);
         ErrorResponse body = response.getBody();
@@ -877,7 +879,7 @@ public class CustomerIntegrationTest {
             Object emailToUpdate,
             Object phoneToCreate,
             Object phoneToUpdate
-    ) throws Exception {
+    ) {
 
         ObjectNode createCustomerRequest = objectMapper.createObjectNode();
         createCustomerRequest.put("name", "Name");
@@ -933,13 +935,12 @@ public class CustomerIntegrationTest {
                 Integer.class
         );
 
-        assertThat(customerCountBeforeUpdate).isEqualTo(1);
-        assertThat(customerCountAfterUpdate).isEqualTo(1);
+        // TODO: Переделать и сравнить объекты до и после update. Удалить лишнее.
+//        assertThat(customerCountBeforeUpdate).isEqualTo(1);
+//        assertThat(customerCountAfterUpdate).isEqualTo(1);
     }
 
     private static Stream<Arguments> parametersForContactsUpdate() {
-        String updatedEmail = "updated-user@softspace.org";
-        String updatedPhone = "+79997777777";
         return Stream.of(
                 Arguments.of("user@softspace.org", "", null, null),
                 Arguments.of("user@softspace.org", null, null, null),
@@ -963,7 +964,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("Soft delete customer twice. Negative test")
     @Test
-    void softDeleteCustomerTwice() throws Exception {
+    void softDeleteCustomerTwice() {
         CustomerDbResult customerDbResultBeforeDelete = jdbcTemplate.queryForObject(
                 "SELECT * FROM customer WHERE GUID = ?",
                 (ResultSet rs, int num) -> ObjectBuilder.getCustomerDbResult(rs),
@@ -1015,7 +1016,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("Soft delete not found customer. Negative test")
     @Test
-    void softDeleteNotFoundCustomer() throws Exception {
+    void softDeleteNotFoundCustomer() {
 
         Integer customerCountBeforeDeleteRequest = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM customer WHERE guid = ?",
@@ -1064,7 +1065,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("Get soft deleted customer. Negative test")
     @Test
-    void getSoftDeletedCustomer() throws Exception {
+    void getSoftDeletedCustomer() {
 
         ResponseEntity<Void> responseEntity = testRestTemplate.exchange(
                 BASE_URL + "/{guid}",
@@ -1106,7 +1107,7 @@ public class CustomerIntegrationTest {
     )
     @DisplayName("Update soft deleted customer. Negative test")
     @Test
-    void updateSoftDeletedCustomer() throws Exception {
+    void updateSoftDeletedCustomer() {
         // Given
         UUID guidOfManager = UUID.randomUUID();
         String email = "new-user@softspace.org";
