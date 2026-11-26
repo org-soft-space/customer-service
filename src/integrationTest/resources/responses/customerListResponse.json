@@ -1,0 +1,17 @@
+{
+  "customers": [
+    {
+      "guid": "c479a77f-0386-4a0f-9245-0927d25b0e77",
+      "name": "Arkadiy",
+      "surname": "Ivanov",
+      "middleName": "Sergeevich",
+      "email": "user@softspace.org",
+      "phone": "+79991234567",
+      "customerType": "LEAD",
+      "userProfileGuid": "d139d0b6-de8e-4e40-845d-87f30d1fb263",
+      "responsibleManagerGuid": "1c84e008-e249-4083-b8e7-0987b54b6ddb",
+      "createdAt": "2026-06-22T14:48:34Z",
+      "updatedAt": "2026-06-22T14:48:34Z"
+    }
+  ]
+}
