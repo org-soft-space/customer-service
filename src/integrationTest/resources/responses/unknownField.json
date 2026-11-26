@@ -1,0 +1,10 @@
+{
+  "name": "Name",
+  "surname": "Surname",
+  "middleName": "MiddleName",
+  "email": "user@softspace.org",
+  "phone": "+79997777777",
+  "customerType": "LEAD",
+  "userProfileGuid": "a4f82c91-7b3e-4d65-9c12-e8f0a6b73542",
+  "responsibleManagerGuid": "d9c63e17-2f84-4a0b-b5d7-31e9c82f6a04"
+}
