@@ -441,12 +441,6 @@ public class CustomerIntegrationTest {
         assertThat(body.userProfileGuid()).isEqualTo(updatedGuidOfUserProfile);
         assertThat(body.responsibleManagerGuid()).isEqualTo(updatedGuidOfManager);
 
-
-        // TODO: JSONAssert.assertEquals() -- для тестирования с JSON файлами.
-        // TODO: если надо получить ответ до десериализации в объект, то можно воспользоваться JsonNode.class.
-        //  String expectedJson = new ClassPathResource("responses/example.json").getContentAsString(StandardCharsets.UTF_8);
-
-
         // Customer after update
         CustomerDbResult customerDbResultAfterUpdate = jdbcTemplate.queryForObject(
                 "SELECT * FROM customer WHERE guid = ?",
